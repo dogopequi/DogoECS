@@ -1,0 +1,23 @@
+# directories
+.vs/
+bin/
+bin-int/
+build-Debug/
+.build-debug/
+build-Release/
+.build-release/
+.codelite/
+
+# files
+*.user
+*.workspace
+*.sln
+*.vcxproj
+*.filters
+*.project
+*.mk
+*.txt
+*Makefile
+*.jpg
+*.jpg
+*.png
