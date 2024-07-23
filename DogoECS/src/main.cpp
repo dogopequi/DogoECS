@@ -18,7 +18,7 @@ int main()
 
 	TransformComponent* TCE1 = static_cast<TransformComponent*>(E1.AddComponent<TransformComponent>());
 	TCE1->SetX(1.0f);
-	std::cout << TCE1->GetX() << std::endl;
+	std::cout << "x: " << TCE1->GetX() << std::endl;
 	//TCE1->SetY(1.0f);
 	//TCE1->SetZ(1.0f);
 

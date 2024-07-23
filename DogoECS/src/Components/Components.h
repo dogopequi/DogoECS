@@ -3,10 +3,10 @@
 class DG_Component
 {
 public:
-    DG_Component() : m_ComponentID(UUID()) {}
+    DG_Component() : m_ComponentID(UUID()) { /*std::cout << "DG Component created" << std::endl;*/ }
     DG_Component(uint64_t id) : m_EntityID(id), m_ComponentID(UUID()) {}
 
-    virtual ~DG_Component() {}
+    virtual ~DG_Component() { /*std::cout << "DG Component deleted" << std::endl;*/ }
 
     virtual void Update(){}
 
@@ -25,10 +25,10 @@ private:
 class TransformComponent : public DG_Component
 {
 public:
-    TransformComponent(uint64_t id) : DG_Component(id) {}
+    TransformComponent(uint64_t id) : DG_Component(id) { /*std::cout << "Transform Component created" << std::endl;*/ }
     TransformComponent() : DG_Component() {}
+    ~TransformComponent() override  {/* std::cout << "Transform Component deleted" << std::endl;*/ }
 
-    virtual ~TransformComponent() {}
 
     void Update() override 
     {
@@ -56,7 +56,8 @@ public:
     AudioComponent(uint64_t id) : DG_Component(id) {}
     AudioComponent() : DG_Component() {}
 
-    virtual ~AudioComponent() {}
+    ~AudioComponent() override { std::cout << "Audio Component deleted" << std::endl; }
+
 
     void Update() override
     {
