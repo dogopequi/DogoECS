@@ -14,7 +14,7 @@ int main()
 		std::cout << "Entity created successfully.\n";
 	}
 	S_ComponentManager.RegisterComponent<TransformComponent>();
-	//S_ComponentManager.RegisterComponent<TransformComponent>();
+	S_ComponentManager.RegisterComponent<TransformComponent>();
 
 	TransformComponent* TCE1 = static_cast<TransformComponent*>(E1.AddComponent<TransformComponent>());
 	TCE1->SetX(1.0f);
