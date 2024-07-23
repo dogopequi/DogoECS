@@ -7,20 +7,15 @@ void customDeleter(int* ptr) {
 }
 struct ComponentTracker
 {
-    ComponentTracker(){}
+    ComponentTracker() {}
     ComponentTracker(const ComponentTracker& other) = delete;
-    ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), MapPointer(std::move(other.MapPointer)){}
-    std::unique_ptr<std::vector<std::unique_ptr<DG_Component>>> VectorPointer;
+    ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), MapPointer(std::move(other.MapPointer)) {}
+    std::unique_ptr<std::vector<std::any>> VectorPointer;
     int32_t VectorLastUsed;
     std::unique_ptr<std::unordered_map<uint64_t, DG_Component*>> MapPointer;
 
-    ~ComponentTracker(){}
+    ~ComponentTracker() {}
 };
-//namespace std
-//{
-//    template<>
-//    struct hash<
-//}
 
 class DG_ComponentManager
 {
@@ -31,31 +26,32 @@ public:
     }
     ~DG_ComponentManager(){}
 
+ 
     void Update()
     {
-        //for (const auto& tracker : m_ComponentTrackers)
-        //{
-        //    std::cout << "size of trackers: " << m_ComponentTrackers.size() << std::endl;
-        //    int32_t i = 0;
-        //    if (tracker)
-        //    {
-        //        for (int j = 0; j < (*tracker->VectorPointer).size(); j++)
-        //        {
-        //            if (i > tracker->VectorLastUsed)
-        //                break;
-        //            i++;
-        //            (*tracker->VectorPointer).at(j).GetUse();
-        //            //if ((*tracker->VectorPointer)->GetUse())
-        //            //    continue;
-        //            //(*tracker->VectorPointer)->Update();
-        //        }
-        //    }
-        //    else
-        //    {
-        //        std::cout << "Tracker is invalid" << std::endl;
-        //    }
-        //}
+        for (const auto& tracker : m_ComponentTrackers)
+        {
+            int32_t i = 0;
+            if (tracker)
+            {
+                for (int j = 0; j < (*tracker->VectorPointer).size(); j++)
+                {
+                    if (i > tracker->VectorLastUsed)
+                        break;
+                    i++;
+                    /*(*tracker->VectorPointer).at(j).GetUse();*/
+                    //if ((*tracker->VectorPointer)->GetUse())
+                    //    continue;
+                    //(*tracker->VectorPointer)->Update();
+                }
+            }
+            else
+            {
+                std::cout << "Tracker is invalid" << std::endl;
+            }
+        }
     }
+
 
     template<typename Type>
     void RegisterComponent()
@@ -121,7 +117,7 @@ public:
     template <typename T>
     DG_Component* AddComponent(uint64_t EntityID)
     {
-     /*   std::type_index typeIndex(typeid(T));
+        std::type_index typeIndex(typeid(T));
         if (!(m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end()))
         {
             std::cout << "Type not registered" << std::endl;
@@ -139,8 +135,7 @@ public:
         T& storedComponent = std::any_cast<T&>((*it->second->VectorPointer)[it->second->VectorLastUsed]);
         (*it->second->MapPointer)[EntityID] = &storedComponent;
         DG_Component* derivedPtr = static_cast<DG_Component*>((*it->second->MapPointer)[EntityID]);
-        return derivedPtr;*/
-        return nullptr;
+        return derivedPtr;
     }
 
     //template <typename T>
