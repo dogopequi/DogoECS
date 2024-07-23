@@ -1,6 +1,6 @@
 #pragma once
-
-class DG_Component;
+#include "DG_Component/DG_Component.h"
+static DG_ComponentManager S_ComponentManager;
 class Entity
 {
 public:
@@ -12,11 +12,11 @@ public:
         return S_ComponentManager.AddComponent<TYPE>(m_EntityID.GetUUID_ui64());
     }
 
-    template<typename TYPE>
-    void RemoveComponent()
-    {
-        S_ComponentManager.RemoveComponent<TYPE>(m_EntityID.GetUUID_ui64());
-    }
+    // template<typename TYPE>
+    // void RemoveComponent()
+    // {
+    //     DG_ComponentManager::RemoveComponent<TYPE>(m_EntityID.GetUUID_ui64());
+    // }
 
     uint64_t GetID_ui64() const { return m_EntityID.GetUUID_ui64(); }
 

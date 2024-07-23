@@ -133,7 +133,7 @@ public:
             std::cout << "Type not registered" << std::endl;
             return nullptr;
         }
-        auto& it = m_ComponentTrackerMap.find(typeIndex);
+        const auto& it = m_ComponentTrackerMap.find(typeIndex);
         it->second->VectorLastUsed++;
         std::cout << std::dec << it->second->VectorLastUsed << std::endl;
         std::cout << "Address of transform: " << std::hex << reinterpret_cast<void*>(&it->second->VectorLastUsed) << std::endl;

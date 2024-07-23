@@ -3,9 +3,6 @@
 #include "Entity/Entity.h"
 #include "DG_Component/DG_Component.h"
 #include "Components/Components.h"
-
-
-static DG_ComponentManager S_ComponentManager;
 static EntityManager s_EntityManager;
 
 int main()
