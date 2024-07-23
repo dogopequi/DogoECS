@@ -1,12 +1,16 @@
 #pragma once
 #include "Components/Components.h"
 
+void customDeleter(int* ptr) {
+    std::cout << "Custom deleter called for ptr: " << ptr << std::endl;
+    delete ptr;  // Properly delete the managed object
+}
 struct ComponentTracker
 {
     ComponentTracker(){}
     ComponentTracker(const ComponentTracker& other) = delete;
     ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), MapPointer(std::move(other.MapPointer)){}
-    std::unique_ptr<std::vector<std::any>> VectorPointer;
+    std::unique_ptr<std::vector<std::unique_ptr<DG_Component>>> VectorPointer;
     int32_t VectorLastUsed;
     std::unique_ptr<std::unordered_map<uint64_t, DG_Component*>> MapPointer;
 
@@ -23,108 +27,90 @@ class DG_ComponentManager
 public:
     DG_ComponentManager()
     {
-        //m_TransformComponentArray.resize(MAX_COMPONENTS);
-        //m_AudioComponentArray.resize(MAX_COMPONENTS);
-        //for (int i = 0; i < MAX_COMPONENTS; i++)
-        //{
-        //    m_TransformComponentArray[i] = TransformComponent();
-        //    m_TransformComponentArray[i].SetUse(false);
-        //    /* m_TransformComponentMap[m_TransformComponentArray[i].m_EntityID] = &m_TransformComponentArray[i];*/
 
-        //    m_AudioComponentArray[i] = AudioComponent();
-        //    m_AudioComponentArray[i].SetUse(false);
-        //    /*m_AudioComponentMap[m_AudioComponentArray[i].m_EntityID] = &m_AudioComponentArray[i];*/
-        //}
     }
     ~DG_ComponentManager(){}
 
-    //void UpdateTransform()
-    //{
-    //    int32_t i = 0;
-    //    for (auto& x : m_TransformComponentArray)
-    //    {
-    //        if (i > m_TC_LastUsed)
-    //        {
-    //            break;
-    //        }
-    //        i++;
-    //        if (!x.GetUse())
-    //            continue;
-    //        x.Update();
-    //    }
-    //}
-
-    //void UpdateAudio()
-    //{
-    //    int32_t i = 0;
-    //    for (auto& x : m_AudioComponentArray)
-    //    {
-    //        if (i > m_AC_LastUsed)
-    //            break;
-    //        i++;
-    //        if (!x.GetUse())
-    //            continue;
-    //        x.Update();
-    //    }
-    //}
-
     void Update()
     {
-        for (const auto& tracker : m_ComponentTrackers)
-        {
-            int32_t i = 0;
-            for (auto& component : *tracker->VectorPointer)
-            {
-                DG_Component& c = std::any_cast<DG_Component>(component);
-                if (i > tracker->VectorLastUsed)
-                    break;
-                i++;
-                if (!c.GetUse())
-                    continue;
-                c.Update();
-            }
-        }
+        //for (const auto& tracker : m_ComponentTrackers)
+        //{
+        //    std::cout << "size of trackers: " << m_ComponentTrackers.size() << std::endl;
+        //    int32_t i = 0;
+        //    if (tracker)
+        //    {
+        //        for (int j = 0; j < (*tracker->VectorPointer).size(); j++)
+        //        {
+        //            if (i > tracker->VectorLastUsed)
+        //                break;
+        //            i++;
+        //            (*tracker->VectorPointer).at(j).GetUse();
+        //            //if ((*tracker->VectorPointer)->GetUse())
+        //            //    continue;
+        //            //(*tracker->VectorPointer)->Update();
+        //        }
+        //    }
+        //    else
+        //    {
+        //        std::cout << "Tracker is invalid" << std::endl;
+        //    }
+        //}
     }
 
     template<typename Type>
     void RegisterComponent()
     {
-
-        auto tracker = std::make_unique<ComponentTracker>();
         std::type_index typeIndex(typeid(Type));
         if (m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end())
         {
             std::cout << "Type already exists" << std::endl;
             return;
         }
-        tracker->VectorPointer.reset(new std::vector<std::any>());
-        tracker->VectorPointer->resize(MAX_COMPONENTS);
-        tracker->MapPointer = std::make_unique<std::unordered_map<uint64_t, DG_Component*>>();
+        m_ComponentTrackers.push_back(std::shared_ptr<ComponentTracker>(new ComponentTracker(),
+            [](ComponentTracker* track) { std::cout << "Deleted shared_ptr " << std::endl; delete track; }));
+        m_ComponentTrackers.back()->VectorPointer.reset(new std::vector<std::any>());
+        m_ComponentTrackers.back()->VectorPointer->resize(MAX_COMPONENTS);
+        m_ComponentTrackers.back()->MapPointer = std::make_unique<std::unordered_map<uint64_t, DG_Component*>>();
         for (int i = 0; i < MAX_COMPONENTS; i++)
         {
             Type component;
             component.SetUse(false);
 
-            (*tracker->VectorPointer)[i] = std::move(component);
-            Type& storedComponent = std::any_cast<Type&>((*tracker->VectorPointer)[i]);
-            (*tracker->MapPointer)[storedComponent.GeEntityID_ui64()] = &storedComponent;
-           /* (*tracker->VectorPointer)[i] = Type();*/
-            //(*tracker->VectorPointer).emplace((*tracker->VectorPointer).begin() + i, Type());
-            //(*tracker->VectorPointer)[i].SetUse(false);
-            //(*tracker->MapPointer)[(*tracker->VectorPointer)[i].GeEntityID_ui64()] = &(*tracker->VectorPointer)[i];
+            (*m_ComponentTrackers.back()->VectorPointer)[i] = std::move(component);
+            Type& storedComponent = std::any_cast<Type&>((*m_ComponentTrackers.back()->VectorPointer)[i]);
+            (*m_ComponentTrackers.back()->MapPointer)[storedComponent.GeEntityID_ui64()] = &storedComponent;
         }
-        tracker->VectorLastUsed = -1;
-        std::cout << "last vector used: " << tracker->VectorLastUsed << std::endl;
-        std::cout << "Address of transform: " << std::hex << reinterpret_cast<void*>(&tracker->VectorLastUsed) << std::endl;
+        m_ComponentTrackers.back()->VectorLastUsed = -1;
+        std::cout << "last vector used: " << m_ComponentTrackers.back()->VectorLastUsed << std::endl;
+        std::cout << "Address of transform: " << std::hex << reinterpret_cast<void*>(&m_ComponentTrackers.back()->VectorLastUsed) << std::endl;
 
-        m_ComponentTrackers.push_back(std::move(tracker));
-        m_ComponentTrackerMap[typeIndex] = std::move(m_ComponentTrackers.back());
+        std::cout << "Address of vector: " << &(*m_ComponentTrackers.back()->VectorPointer).at(0) << std::endl;
+
+        //for (const auto& tracker : m_ComponentTrackers)
+        //{
+        //    std::cout << "size of trackers: " << m_ComponentTrackers.size() << std::endl;
+        //    int32_t i = 0;
+        //    std::cout << "Address of vector: " << &(*tracker->VectorPointer).at(0) << std::endl;
+        //    for (int j = 0; j < (*tracker->VectorPointer).size(); j++)
+        //    {
+        //        Type& c = std::any_cast<Type&>((*tracker->VectorPointer)[j]);
+        //        if (i > tracker->VectorLastUsed)
+        //            break;
+        //        i++;
+        //        if (!c.GetUse())
+        //            continue;
+        //        c.Update();
+        //    }
+        //}
+
+        m_ComponentTrackerMap[typeIndex] = m_ComponentTrackers.back();
 
         auto it = m_ComponentTrackerMap.find(typeIndex);
         if (it != m_ComponentTrackerMap.end())
         {
             std::cout << std::dec << "last vector used: " << it->second->VectorLastUsed << std::endl;
             std::cout << "Address of transform: " << std::hex << reinterpret_cast<void*>(&it->second->VectorLastUsed) << std::endl;
+            std::cout << "Address of vector: " << &(*it->second->VectorPointer).at(0) << std::endl;
         }
         else
         {
@@ -135,7 +121,7 @@ public:
     template <typename T>
     DG_Component* AddComponent(uint64_t EntityID)
     {
-        std::type_index typeIndex(typeid(T));
+     /*   std::type_index typeIndex(typeid(T));
         if (!(m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end()))
         {
             std::cout << "Type not registered" << std::endl;
@@ -145,29 +131,23 @@ public:
 
         const auto& it = m_ComponentTrackerMap.find(typeIndex);
         it->second->VectorLastUsed++;
-        std::cout << std::dec << "last vector used: " << it->second->VectorLastUsed << std::endl;
-        std::cout << "Address of transform: " << std::hex << reinterpret_cast<void*>(&it->second->VectorLastUsed) << std::endl;
-
-
-       // (*it->second->VectorPointer)[it->second->VectorLastUsed] = T(EntityID);
 
 
         (*it->second->VectorPointer).emplace(it->second->VectorPointer->begin() + it->second->VectorLastUsed, T(EntityID));
         auto& component = std::any_cast<T>((*it->second->VectorPointer)[it->second->VectorLastUsed]);
         component.SetUse(true);
-   /*     (*it->second->VectorPointer)[it->second->VectorLastUsed].SetUse(true);*/
         T& storedComponent = std::any_cast<T&>((*it->second->VectorPointer)[it->second->VectorLastUsed]);
         (*it->second->MapPointer)[EntityID] = &storedComponent;
-      //  (*it->second->MapPointer)[EntityID] = &(*it->second->VectorPointer)[it->second->VectorLastUsed];
         DG_Component* derivedPtr = static_cast<DG_Component*>((*it->second->MapPointer)[EntityID]);
-        return derivedPtr;
+        return derivedPtr;*/
+        return nullptr;
     }
 
     //template <typename T>
     //void RemoveComponent(uint64_t EntityID);
 
 
-private:
+public:
 
     uint32_t MAX_COMPONENTS = 5000;
     std::vector<std::shared_ptr<ComponentTracker>> m_ComponentTrackers;

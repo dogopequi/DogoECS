@@ -14,13 +14,13 @@ int main()
 		std::cout << "Entity created successfully.\n";
 	}
 	S_ComponentManager.RegisterComponent<TransformComponent>();
-	S_ComponentManager.RegisterComponent<TransformComponent>();
+	//S_ComponentManager.RegisterComponent<TransformComponent>();
 
 	TransformComponent* TCE1 = static_cast<TransformComponent*>(E1.AddComponent<TransformComponent>());
 	TCE1->SetX(1.0f);
 	std::cout << "x: " << TCE1->GetX() << std::endl;
-	//TCE1->SetY(1.0f);
-	//TCE1->SetZ(1.0f);
+	TCE1->SetY(1.0f);
+	TCE1->SetZ(1.0f);
 
-	//S_ComponentManager.Update();
+	S_ComponentManager.Update();
 }
