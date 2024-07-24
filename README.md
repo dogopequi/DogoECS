@@ -37,7 +37,7 @@ This function returns the pointer to the first available component in memory and
 To remove the component it's very similar as adding one:
 - YourEntity->RemoveComponent<YourClassType>(Component->GetComponentID_ui64());
 
-This function doesn't actually deallocate memory, it simply tells the ECS to not use this component and deassociates the EntityID to a 0. Soon I want to add a mechanicsm to sort the vector by its Use flag.
+This function doesn't actually deallocate memory, it simply tells the ECS to not use this component and deassociates the EntityID to a 0. Soon I want to add a mechanicsm to sort the vector by its Use flag. I will probably remove the UUID parameter and just make it a const auto& Component.
 
 Calling DG_ComponentManager::Update() will call every used component in memory by order of type. Soon I want to add a way for the user to define an order of Update.
 
