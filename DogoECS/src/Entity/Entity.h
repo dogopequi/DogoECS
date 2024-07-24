@@ -7,16 +7,16 @@ public:
     Entity() { m_EntityID = UUID(); }
 
     template<typename TYPE>
-    DG_Component* AddComponent()
+    TYPE* AddComponent()
     {
         return S_ComponentManager.AddComponent<TYPE>(m_EntityID.GetUUID_ui64());
     }
 
-    // template<typename TYPE>
-    // void RemoveComponent()
-    // {
-    //     DG_ComponentManager::RemoveComponent<TYPE>(m_EntityID.GetUUID_ui64());
-    // }
+     template<typename TYPE>
+     void RemoveComponent(uint64_t componentID)
+     {
+        S_ComponentManager.RemoveComponent<TYPE>(componentID);
+     }
 
     uint64_t GetID_ui64() const { return m_EntityID.GetUUID_ui64(); }
 
@@ -36,13 +36,14 @@ public:
         }
     }
 
-    std::optional<Entity> CreateEntity()
+    
+    Entity* CreateEntity()
     {
         if (m_LivingEntityCount >= MAX_ENTITIES)
         {
-            return std::nullopt;
+            return nullptr;
         }
-        Entity id = m_AvailableEntities.front();
+        Entity* id = &m_AvailableEntities.front();
         m_AvailableEntities.pop();
         ++m_LivingEntityCount;
         return id;

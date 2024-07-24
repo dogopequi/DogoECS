@@ -1,26 +1,5 @@
 #pragma once
-
-class DG_Component
-{
-public:
-    DG_Component() : m_ComponentID(UUID()) { /*std::cout << "DG Component created" << std::endl;*/ }
-    DG_Component(uint64_t id) : m_EntityID(id), m_ComponentID(UUID()) {}
-
-    virtual ~DG_Component() { /*std::cout << "DG Component deleted" << std::endl;*/ }
-
-    virtual void Update(){}
-
-    bool GetUse() const { return m_InUse; }
-    void SetUse(bool setter) { m_InUse = setter; }
-
-    uint64_t GeEntityID_ui64() const { return m_EntityID; }
-    uint64_t GetComponentID_ui64() const { return m_ComponentID.GetUUID_ui64(); }
-
-private:
-    bool m_InUse;
-    uint64_t m_EntityID;
-    UUID m_ComponentID;
-};
+#include "DG_Component/DG_Component.h"
 
 class TransformComponent : public DG_Component
 {
@@ -32,10 +11,11 @@ public:
 
     void Update() override 
     {
+        std::cout << "TRANSFORM --------------------------------------------------" << std::endl;
         std::cout << "X: " << x << std::endl;
         std::cout << "Y: " << y << std::endl;
         std::cout << "Z: " << z << std::endl;
-        std::cout << "Address of transform: " << std::hex << reinterpret_cast<void*>(this) << std::endl;
+        std::cout << "ID: " << m_ComponentID.GetUUID_ui64() << std::endl;
     }
 
     void SetX(float x) { this->x = x; }
@@ -50,19 +30,32 @@ private:
     float x, y, z;
 
 };
+
+template<>
+REGISTER_COMPONENT_TEMPLATE(TransformComponent)
+
+template<>
+ADD_COMPONENT_TEMPLATE(TransformComponent)
+
+template <>
+REMOVE_COMPONENT_TEMPLATE(TransformComponent)
+
+
 class AudioComponent : public DG_Component
 {
 public:
     AudioComponent(uint64_t id) : DG_Component(id) {}
     AudioComponent() : DG_Component() {}
 
-    ~AudioComponent() override { std::cout << "Audio Component deleted" << std::endl; }
+    ~AudioComponent() override { }
 
 
     void Update() override
     {
+
+        std::cout << "AUDIO --------------------------------------------------- " << std::endl;
         std::cout << "Name: " << name << std::endl;
-        std::cout << "Address of audio: " << std::hex << reinterpret_cast<void*>(this) << std::endl;
+        std::cout << "ID: " << m_ComponentID.GetUUID_ui64() << std::endl;
     }
 
     void SetName(std::string name) { this->name = name; }
@@ -71,3 +64,12 @@ public:
 private:
     std::string name;
 };
+
+template<>
+REGISTER_COMPONENT_TEMPLATE(AudioComponent)
+
+template<>
+ADD_COMPONENT_TEMPLATE(AudioComponent)
+
+template <>
+REMOVE_COMPONENT_TEMPLATE(AudioComponent)

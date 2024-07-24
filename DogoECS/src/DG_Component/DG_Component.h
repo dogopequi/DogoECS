@@ -1,5 +1,26 @@
 #pragma once
-#include "Components/Components.h"
+
+class DG_Component
+{
+public:
+    DG_Component() : m_ComponentID(UUID()) { /*std::cout << "DG Component created" << std::endl;*/ }
+    DG_Component(uint64_t id) : m_EntityID(id), m_ComponentID(UUID()) {}
+
+    virtual ~DG_Component() { /*std::cout << "DG Component deleted" << std::endl;*/ }
+
+    virtual void Update() {}
+
+    bool GetUse() const { return m_InUse; }
+    void SetUse(bool setter) { m_InUse = setter; }
+
+    uint64_t GeEntityID_ui64() const { return m_EntityID; }
+    uint64_t GetComponentID_ui64() const { return m_ComponentID.GetUUID_ui64(); }
+
+protected:
+    bool m_InUse;
+    uint64_t m_EntityID;
+    UUID m_ComponentID;
+};
 
 void customDeleter(int* ptr) {
     std::cout << "Custom deleter called for ptr: " << ptr << std::endl;
@@ -9,10 +30,10 @@ struct ComponentTracker
 {
     ComponentTracker() {}
     ComponentTracker(const ComponentTracker& other) = delete;
-    ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), MapPointer(std::move(other.MapPointer)) {}
+    ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), /*EntityMapPointer(std::move(other.EntityMapPointer)),*/ ComponentMapPointer(std::move(other.ComponentMapPointer)) {}
     std::unique_ptr<std::vector<std::shared_ptr<DG_Component>>> VectorPointer;
     int32_t VectorLastUsed;
-    std::unique_ptr<std::unordered_map<uint64_t, DG_Component*>> MapPointer;
+    std::unique_ptr<std::unordered_map<uint64_t, DG_Component*>> ComponentMapPointer;
 
     ~ComponentTracker() {}
 };
@@ -63,37 +84,29 @@ public:
             [](ComponentTracker* track) { std::cout << "Deleted shared_ptr " << std::endl; delete track; }));
         m_ComponentTrackers.back()->VectorPointer.reset(new std::vector<std::shared_ptr<DG_Component>>());
         m_ComponentTrackers.back()->VectorPointer->resize(MAX_COMPONENTS);
-        m_ComponentTrackers.back()->MapPointer = std::make_unique<std::unordered_map<uint64_t, DG_Component*>>();
+        m_ComponentTrackers.back()->ComponentMapPointer = std::make_unique<std::unordered_map<uint64_t, DG_Component*>>();
         for (int i = 0; i < MAX_COMPONENTS; i++)
         {
             (*m_ComponentTrackers.back()->VectorPointer)[i] = std::make_shared<Type>();
             (*m_ComponentTrackers.back()->VectorPointer)[i]->SetUse(false);
             DG_Component* ptr = (*m_ComponentTrackers.back()->VectorPointer)[i].get();
-            (*m_ComponentTrackers.back()->MapPointer)[(*m_ComponentTrackers.back()->VectorPointer)[i]->GeEntityID_ui64()] = ptr;
+            (*m_ComponentTrackers.back()->ComponentMapPointer)[(*m_ComponentTrackers.back()->VectorPointer)[i]->GetComponentID_ui64()] = ptr;
         }
         m_ComponentTrackers.back()->VectorLastUsed = -1;
-        std::cout << "last vector used: " << m_ComponentTrackers.back()->VectorLastUsed << std::endl;
-        std::cout << "Address of transform: " << std::hex << reinterpret_cast<void*>(&m_ComponentTrackers.back()->VectorLastUsed) << std::endl;
-
-        std::cout << "Address of vector: " << &(*m_ComponentTrackers.back()->VectorPointer).at(0) << std::endl;
 
         m_ComponentTrackerMap[typeIndex] = m_ComponentTrackers.back();
 
         auto it = m_ComponentTrackerMap.find(typeIndex);
-        if (it != m_ComponentTrackerMap.end())
-        {
-            std::cout << std::dec << "last vector used: " << it->second->VectorLastUsed << std::endl;
-            std::cout << "Address of transform: " << std::hex << reinterpret_cast<void*>(&it->second->VectorLastUsed) << std::endl;
-            std::cout << "Address of vector: " << &(*it->second->VectorPointer).at(0) << std::endl;
-        }
-        else
+        if (it == m_ComponentTrackerMap.end())
         {
             std::cout << "Type not found in map" << std::endl;
         }
     }
 
+    //template <typename T>
+    //T* AddComponent(uint64_t EntityID);
     template <typename T>
-    DG_Component* AddComponent(uint64_t EntityID)
+    T* AddComponent(uint64_t EntityID)
     {
         std::type_index typeIndex(typeid(T));
         if (!(m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end()))
@@ -110,13 +123,13 @@ public:
         (*it->second->VectorPointer).emplace(it->second->VectorPointer->begin() + it->second->VectorLastUsed, std::make_shared<T>(EntityID));
         auto& component = (*it->second->VectorPointer)[it->second->VectorLastUsed];
         component->SetUse(true);
-        (*it->second->MapPointer)[EntityID] = component.get();
-        DG_Component* derivedPtr = static_cast<DG_Component*>((*it->second->MapPointer)[EntityID]);
+        (*it->second->ComponentMapPointer)[component->GetComponentID_ui64()] = component.get();
+        T* derivedPtr = dynamic_cast<T*>((*it->second->ComponentMapPointer)[component->GetComponentID_ui64()]);
         return derivedPtr;
     }
 
-    //template <typename T>
-    //void RemoveComponent(uint64_t EntityID);
+    template <typename T>
+    void RemoveComponent(uint64_t componentID);
 
 
 public:
@@ -128,53 +141,83 @@ public:
 
 };
 
-//template <>
-//TransformComponent* DG_ComponentManager::AddComponent<TransformComponent>(uint64_t EntityID)
-//{
-//    m_TC_LastUsed++;
-//    m_TransformComponentArray[m_TC_LastUsed] = TransformComponent(EntityID);
-//    m_TransformComponentArray[m_TC_LastUsed].SetUse(true);
-//    m_TransformComponentMap[EntityID] = &m_TransformComponentArray[m_TC_LastUsed];
-//
-//    return m_TransformComponentMap[EntityID];
-//}
-//template <>
-//AudioComponent* DG_ComponentManager::AddComponent<AudioComponent>(uint64_t EntityID)
-//{
-//    m_AC_LastUsed++;
-//    m_AudioComponentArray[m_AC_LastUsed] = AudioComponent(EntityID);
-//    m_AudioComponentArray[m_AC_LastUsed].SetUse(true);
-//    m_AudioComponentMap[EntityID] = &m_AudioComponentArray[m_AC_LastUsed];
-//
-//    return m_AudioComponentMap[EntityID];
-//}
-//
-//template <>
-//void DG_ComponentManager::RemoveComponent<TransformComponent>(uint64_t EntityID)
-//{
-//    auto it = m_TransformComponentMap.find(EntityID);
-//    if (it != m_TransformComponentMap.end())
-//    {
-//        m_TransformComponentMap.erase(it);
-//    }
-//
-//    m_TransformComponentArray[m_AC_LastUsed] = TransformComponent();
-//    m_TransformComponentArray[m_AC_LastUsed].SetUse(false);
-//
-//    m_TC_LastUsed--;
-//}
-//
-//template <>
-//void DG_ComponentManager::RemoveComponent<AudioComponent>(uint64_t EntityID)
-//{
-//    auto it = m_AudioComponentMap.find(EntityID);
-//    if (it != m_AudioComponentMap.end())
-//    {
-//        m_AudioComponentMap.erase(it);
-//    }
-//
-//    m_AudioComponentArray[m_AC_LastUsed] = AudioComponent();
-//    m_AudioComponentArray[m_AC_LastUsed].SetUse(false);
-//
-//    m_AC_LastUsed--;
-//}
+#define REGISTER_COMPONENT_TEMPLATE(TYPE) \
+void DG_ComponentManager::RegisterComponent<TYPE>()                                                                                       \
+{                                                                                                                                                        \
+std::type_index typeIndex(typeid(TYPE));                                                                                               \
+if (m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end())                                                                            \
+{                                                                                                                                                    \
+std::cout << "Type: " << typeIndex.name() << " already registered." << std::endl;                                                                                                 \
+return;                                                                                                                                          \
+}                                                                                                                                                    \
+m_ComponentTrackers.push_back(std::shared_ptr<ComponentTracker>(new ComponentTracker(), \
+    [](ComponentTracker* track) { /*std::cout << "Deleted shared_ptr " << std::endl;*/ delete track; }));                                                \
+    m_ComponentTrackers.back()->VectorPointer.reset(new std::vector<std::shared_ptr<DG_Component>>());                                                   \
+    m_ComponentTrackers.back()->VectorPointer->resize(MAX_COMPONENTS);                                                                                   \
+    m_ComponentTrackers.back()->ComponentMapPointer = std::make_unique<std::unordered_map<uint64_t, DG_Component*>>();                                            \
+    for (int i = 0; i < MAX_COMPONENTS; i++)                                                                                                             \
+    {                                                                                                                                                    \
+        (*m_ComponentTrackers.back()->VectorPointer)[i] = std::make_shared<TYPE>();                                                        \
+        (*m_ComponentTrackers.back()->VectorPointer)[i]->SetUse(false);                                                                                  \
+        std::shared_ptr<TYPE> ptr = std::dynamic_pointer_cast<TYPE>((*m_ComponentTrackers.back()->VectorPointer)[i]);                                                     \
+        (*m_ComponentTrackers.back()->ComponentMapPointer)[(*m_ComponentTrackers.back()->VectorPointer)[i]->GetComponentID_ui64()] = ptr.get();                       \
+    }                                                                                                                                                    \
+        m_ComponentTrackers.back()->VectorLastUsed = -1;                                                                                                     \
+                                                                                                                                                                     \
+        m_ComponentTrackerMap[typeIndex] = m_ComponentTrackers.back();                                                                                       \
+                                                                                                                                                                            \
+        auto it = m_ComponentTrackerMap.find(typeIndex);                                                                                                     \
+        if (it == m_ComponentTrackerMap.end())                                                                                                               \
+        {                                                                                                                                                    \
+            std::cout << "Type not found in map" << std::endl;                                                                                               \
+        }                                                                                                                                                    \
+}    
+
+#define ADD_COMPONENT_TEMPLATE(TYPE)                                                                                                                                     \
+TYPE* DG_ComponentManager::AddComponent<TYPE>(uint64_t EntityID)                                                                                                               \
+{                                                                                                                                                                           \
+    std::type_index typeIndex(typeid(TYPE));                                                                                                                                \
+    if (!(m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end()))                                                                                            \
+    {                                                                                                                                                                       \
+        std::cout << "Type not registered" << std::endl;                                                                                                                    \
+        return nullptr;                                                                                                                                                     \
+    }                                                                                                                                                                       \
+                                                                                                                                                                            \
+    const auto& it = m_ComponentTrackerMap.find(typeIndex);                                                                                                                 \
+    it->second->VectorLastUsed++;                                                                                                                                           \
+                                                                                                                                                                            \
+                                                                                                                                                                            \
+    (*it->second->VectorPointer).emplace(it->second->VectorPointer->begin() + it->second->VectorLastUsed, std::make_shared<TYPE>(EntityID));                  \
+    auto& component = (*it->second->VectorPointer)[it->second->VectorLastUsed];                                                                                             \
+    component->SetUse(true);                                                                                                                                                \
+    (*it->second->ComponentMapPointer)[component->GetComponentID_ui64()] = component.get();                                                                                 \
+    TYPE* derivedPtr = static_cast<TYPE*>((*it->second->ComponentMapPointer)[component->GetComponentID_ui64()]);   \
+    return derivedPtr;                                                                                                                                                      \
+}  
+
+#define REMOVE_COMPONENT_TEMPLATE(TYPE)                                                                                                     \
+void DG_ComponentManager::RemoveComponent<TYPE>(uint64_t componentID)                                                                       \
+{                                                                                                                                           \
+    std::type_index typeIndex(typeid(TYPE));                                                                                                \
+    const auto& map = m_ComponentTrackerMap.find(typeIndex);                                                                                \
+    auto MapIT = map->second->ComponentMapPointer->find(componentID);                                                                       \
+                                                                                                                                            \
+    if (MapIT != map->second->ComponentMapPointer->end())                                                                                   \
+    {                                                                                                                                       \
+        map->second->ComponentMapPointer->erase(MapIT);                                                                                     \
+    }                                                                                                                                       \
+    auto VectorIT = std::find_if(map->second->VectorPointer->begin(), map->second->VectorPointer->end(),                                    \
+        [componentID](const std::shared_ptr<DG_Component>& component) {                                                                     \
+            return component->GetComponentID_ui64() == componentID;                                                                         \
+        });                                                                                                                                 \
+    if (VectorIT != map->second->VectorPointer->end())                                                                                      \
+    {                                                                                                                                       \
+        *VectorIT = std::make_shared<TYPE>();                                                                                               \
+        (*VectorIT)->SetUse(false);                                                                                                         \
+    }                                                                                                                                       \
+}
+
+
+//(*map->second->VectorPointer). = std::make_shared<TransformComponent>();                                                              \
+    //(*map->second->VectorPointer)[map->second->VectorLastUsed]->SetUse(false);                                                            \
+    //map->second->VectorLastUsed--;                                                                                                        \
