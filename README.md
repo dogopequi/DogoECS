@@ -25,7 +25,8 @@ Create an entity by calling DG_EntityManager::CreateEntity():
 This function returns a pointer to an Entity. To check if it's valid just place it in an if() check.
 
 To add a component first you need to register them.
-This is done by calling DG_ComponentManager::RegisterComponent<YourComponent>(). 
+This is done by calling DG_ComponentManager::RegisterComponent<YourComponent>().
+
 This function returns nothing, it simply allocates memory for the components. If you try to call it twice for the same class of component, it exits since it has already allocated the memory. Soon I will add a parameter to let the user decide how many slots to store.
 
 To add a component then you call DG_ComponentManager::AddComponent<YourClassType>():
