@@ -3,21 +3,23 @@
 #include "Entity/Entity.h"
 #include "DG_Component/DG_Component.h"
 #include "Components/Components.h"
-static EntityManager s_EntityManager;
+
+DG_EntityManager* DG_EntityManager::s_Instance = new DG_EntityManager();
+DG_ComponentManager* DG_ComponentManager::s_Instance = new DG_ComponentManager();
 
 int main()
 {
-	Entity* E1 = s_EntityManager.CreateEntity();
+	Entity* E1 = DG_EntityManager::CreateEntity();
 	if (E1) {
 		std::cout << "Entity created successfully.\n";
 	}
-	Entity* E2 = s_EntityManager.CreateEntity();
+	Entity* E2 = DG_EntityManager::CreateEntity();
 	if (E2) {
 		std::cout << "Entity created successfully.\n";
 	}
-	S_ComponentManager.RegisterComponent<TransformComponent>();
-	S_ComponentManager.RegisterComponent<TransformComponent>();
-	S_ComponentManager.RegisterComponent<AudioComponent>();
+	DG_ComponentManager::RegisterComponent<TransformComponent>();
+	DG_ComponentManager::RegisterComponent<TransformComponent>();
+	DG_ComponentManager::RegisterComponent<AudioComponent>();
 
 	TransformComponent* TCE1 = E1->AddComponent<TransformComponent>();
 	TCE1->SetX(1.0f);
@@ -38,27 +40,27 @@ int main()
 
 	std::cout << "UPDATE 1 -----------------------------------------------------------" << std::endl;
 
-	S_ComponentManager.Update();
+	DG_ComponentManager::Update();
 
 	E1->RemoveComponent<TransformComponent>(TCE1->GetComponentID_ui64());
 
 	std::cout << "UPDATE 2 -----------------------------------------------------------" << std::endl;
 
-	S_ComponentManager.Update();
+	DG_ComponentManager::Update();
 
 	E1->RemoveComponent<TransformComponent>(TCE2->GetComponentID_ui64());
 	std::cout << "UPDATE 3 -----------------------------------------------------------" << std::endl;
 
-	S_ComponentManager.Update();
+	DG_ComponentManager::Update();
 
 	E1->RemoveComponent<AudioComponent>(ACE2->GetComponentID_ui64());
 	std::cout << "UPDATE 4 -----------------------------------------------------------" << std::endl;
 
-	S_ComponentManager.Update();
+	DG_ComponentManager::Update();
 
 	E1->RemoveComponent<AudioComponent>(ACE1->GetComponentID_ui64());
 	std::cout << "UPDATE 5 -----------------------------------------------------------" << std::endl;
 
-	S_ComponentManager.Update();
+	DG_ComponentManager::Update();
 
 }
