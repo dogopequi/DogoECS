@@ -37,10 +37,10 @@ This function returns nothing, it simply allocates memory for the components.
  
 If you try to call it twice for the same class of component, it exits since it has already allocated the memory. Soon I will add a parameter to let the user decide how many slots to store.
 
-To add a component then you call `DG_ComponentManager::AddComponent<YourClassType>();`
+To add a component then you call `DG_ComponentManager::AddComponent<YourComponent>();`
 
 ``` cpp
-YourClassType* Component = YourEntity->AddComponent<YourClassType>();
+YourComponent* Component = YourEntity->AddComponent<YourComponent>();
 ```
 
 
@@ -48,7 +48,7 @@ This function returns the pointer to the first available component in memory and
 
 To remove the component it's very similar as adding one:
 ``` cpp
-YourEntity->RemoveComponent<YourClassType>(Component->GetComponentID_ui64());
+YourEntity->RemoveComponent<YourComponent>(Component->GetComponentID_ui64());
 ```
 
 This function doesn't actually deallocate memory, it simply tells the ECS to not use this component and deassociates the EntityID to a 0. 
