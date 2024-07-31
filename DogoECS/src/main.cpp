@@ -23,19 +23,18 @@ int main()
 
 	TransformComponent* TCE1 = E1->AddComponent<TransformComponent>();
 	TCE1->SetX(1.0f);
-	TCE1->SetY(1.0f);
-	TCE1->SetZ(1.0f);
-
+	TCE1->SetY(2.0f);
+	TCE1->SetZ(3.0f);
 
 	TransformComponent* TCE2 = E2->AddComponent<TransformComponent>();
-	TCE2->SetX(2.0f);
+	TCE2->SetX(5.0f);
 	TCE2->SetY(2.0f);
-	TCE2->SetZ(2.0f);
+	TCE2->SetZ(4.0f);
 
-	AudioComponent* ACE1 = (AudioComponent*)(E2->AddComponent<AudioComponent>());
+	AudioComponent* ACE1 = E2->AddComponent<AudioComponent>();
 	ACE1->SetName("YAY1");
 
-	AudioComponent* ACE2 = (AudioComponent*)(E1->AddComponent<AudioComponent>());
+	AudioComponent* ACE2 = E1->AddComponent<AudioComponent>();
 	ACE2->SetName("YAY2");
 
 	std::cout << "UPDATE 1 -----------------------------------------------------------" << std::endl;
@@ -61,6 +60,5 @@ int main()
 	E1->RemoveComponent<AudioComponent>(ACE1->GetComponentID_ui64());
 	std::cout << "UPDATE 5 -----------------------------------------------------------" << std::endl;
 
-	DG_ComponentManager::Update();
 
 }

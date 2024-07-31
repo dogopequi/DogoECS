@@ -6,10 +6,10 @@ class TransformComponent : public DG_Component
 public:
     TransformComponent(uint64_t id) : DG_Component(id) { /*std::cout << "Transform Component created" << std::endl;*/ }
     TransformComponent() : DG_Component() {}
-    ~TransformComponent() override  {/* std::cout << "Transform Component deleted" << std::endl;*/ }
+    ~TransformComponent() override {/* std::cout << "Transform Component deleted" << std::endl;*/ }
 
 
-    void Update() override 
+    void Update() override
     {
         std::cout << "TRANSFORM --------------------------------------------------" << std::endl;
         std::cout << "X: " << x << std::endl;
