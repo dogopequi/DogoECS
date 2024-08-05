@@ -11,8 +11,7 @@ workspace "DogoECS"
     outputDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 project "DogoECS"
-    location "DogoECS"
-    kind "ConsoleApp"
+    kind "StaticLib"
     language "C++"
     cppdialect "C++17"
     staticruntime "on"
@@ -20,39 +19,24 @@ project "DogoECS"
     targetdir ("bin/".. outputDir .. "/%{prj.name}")
     objdir ("bin-int/".. outputDir .. "/%{prj.name}")
 
-    pchheader "dgpch.h"
-    pchsource "DogoECS/src/dgpch.cpp"
-
     files
     {
-        "%{prj.name}/src/**.h",
+        "%{prj.name}/include/**.h",
         "%{prj.name}/src/**.cpp"
     }
 
     includedirs
     {
-        "%{prj.name}/src",
+        "%{prj.name}/include",
     }
 
     filter "system:windows"
         system "windows"
         systemversion = "latest"
 
-        defines
-        {
-            "DG_PLATFORM_WINDOWS",
-            "DG_BUILD_STATIC"
-        }
-
     filter "system:linux"
         system "linux"
         systemversion = "latest"
-
-        defines
-        {
-            "DG_PLATFORM_LINUX",
-            "DG_BUILD_STATIC"
-        }
 
        buildoptions
        {

@@ -1,121 +1,159 @@
 #pragma once
+
+#include <iostream>
+#include <memory>
+#include <vector>
+#include <unordered_map>
+#include <typeindex>
+
 #include "UUID.h"
-class DG_Component
+namespace DogoECS
 {
-public:
-    DG_Component() : m_ComponentID(UUID()) {  }
-    DG_Component(uint64_t id) : m_EntityID(id), m_ComponentID(UUID()) {}
-
-    virtual ~DG_Component() {  }
-
-    virtual void Update() {}
-
-    bool GetUse() const { return m_InUse; }
-    void SetUse(bool setter) { m_InUse = setter; }
-
-    uint64_t GeEntityID_ui64() const { return m_EntityID; }
-    uint64_t GetComponentID_ui64() const { return m_ComponentID.GetUUID_ui64(); }
-
-    void SetEntityID(uint64_t e) { m_EntityID = e; }
-
-protected:
-    bool m_InUse;
-    uint64_t m_EntityID;
-    UUID m_ComponentID;
-};
-
-class ComponentTrackerPARENT
-{
-public:
-    virtual ~ComponentTrackerPARENT() = default;
-    virtual void UpdateComponents() = 0;
-};
-
-template<typename TYPE>
-struct ComponentTracker : public ComponentTrackerPARENT
-{
-    ComponentTracker() {}
-    ComponentTracker(const ComponentTracker& other) = delete;
-    ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), /*EntityMapPointer(std::move(other.EntityMapPointer)),*/ ComponentMapPointer(std::move(other.ComponentMapPointer)) {}
-    std::unique_ptr<std::vector<TYPE>> VectorPointer = std::make_unique<std::vector<TYPE>>();
-    int32_t VectorLastUsed;
-    std::unique_ptr<std::unordered_map<uint64_t, TYPE*>> ComponentMapPointer = std::make_unique<std::unordered_map<uint64_t, TYPE*>>();
-
-    void UpdateComponents() override
+    class DG_Component
     {
-        auto& vector = *VectorPointer; // Dereference unique_ptr to access the vector
-        for (size_t j = 0; j < vector.size(); j++)
+    public:
+        DG_Component() : m_ComponentID(UUID()) {  }
+        DG_Component(uint64_t id) : m_EntityID(id), m_ComponentID(UUID()) {}
+
+        virtual ~DG_Component() {  }
+
+        virtual void Update() {}
+
+        bool GetUse() const { return m_InUse; }
+        void SetUse(bool setter) { m_InUse = setter; }
+
+        uint64_t GeEntityID_ui64() const { return m_EntityID; }
+        uint64_t GetComponentID_ui64() const { return m_ComponentID.GetUUID_ui64(); }
+
+        void SetEntityID(uint64_t e) { m_EntityID = e; }
+
+    protected:
+        bool m_InUse;
+        uint64_t m_EntityID;
+        UUID m_ComponentID;
+    };
+
+    class ComponentTrackerPARENT
+    {
+    public:
+        virtual ~ComponentTrackerPARENT() = default;
+        virtual void UpdateComponents() = 0;
+    };
+
+    template<typename TYPE>
+    struct ComponentTracker : public ComponentTrackerPARENT
+    {
+        ComponentTracker() {}
+        ComponentTracker(const ComponentTracker& other) = delete;
+        ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), /*EntityMapPointer(std::move(other.EntityMapPointer)),*/ ComponentMapPointer(std::move(other.ComponentMapPointer)) {}
+        std::unique_ptr<std::vector<TYPE>> VectorPointer = std::make_unique<std::vector<TYPE>>();
+        int32_t VectorLastUsed;
+        std::unique_ptr<std::unordered_map<uint64_t, TYPE*>> ComponentMapPointer = std::make_unique<std::unordered_map<uint64_t, TYPE*>>();
+
+        void UpdateComponents() override
         {
-            if (j > VectorLastUsed)
-                break;
-            auto& component = vector[j];
-            if (component.GetUse())
+            auto& vector = *VectorPointer; // Dereference unique_ptr to access the vector
+            for (size_t j = 0; j < vector.size(); j++)
             {
-                component.Update();
+                if (j > VectorLastUsed)
+                    break;
+                auto& component = vector[j];
+                if (component.GetUse())
+                {
+                    component.Update();
+                }
             }
         }
-    }
 
-    ~ComponentTracker() {}
-};
+        ~ComponentTracker() {}
+    };
 
-class DG_ComponentManager
-{
-public:
-    DG_ComponentManager(const DG_ComponentManager&) = delete;
-    DG_ComponentManager& operator=(const DG_ComponentManager&) = delete;
-    ~DG_ComponentManager() {}
-
-
-    static void Update()
+    class DG_ComponentManager
     {
-        for (const auto& tracker : m_ComponentTrackers)
+    public:
+        static DG_ComponentManager& GetInstance();
+
+        // Delete copy constructor and assignment operator to prevent copying
+        DG_ComponentManager(const DG_ComponentManager&) = delete;
+        DG_ComponentManager& operator=(const DG_ComponentManager&) = delete;
+        ~DG_ComponentManager() {}
+
+
+        static void Update()
         {
-            if (tracker)
+            DG_ComponentManager::GetInstance().UpdateImpl();
+        }
+
+
+        static void UpdateImpl()
+        {
+            for (const auto& tracker : m_ComponentTrackers)
             {
-                tracker->UpdateComponents();
-            }
-            else
-            {
-                std::cout << "Tracker is invalid" << std::endl;
+                if (tracker)
+                {
+                    tracker->UpdateComponents();
+                }
+                else
+                {
+                    std::cout << "Tracker is invalid" << std::endl;
+                }
             }
         }
-    }
 
 
-    template<typename Type>
-    static void RegisterComponent()
-    {
-        std::cout << "No template specialization defined. Please use the macro REGISTER_COMPONENT_TEMPLATE(YourComponent)" << std::endl;
-    }
+        template<typename Type>
+        static void RegisterComponent()
+        {
+            DG_ComponentManager::GetInstance().RegisterComponentImpl<Type>();
+        }
 
-    template <typename T>
-    static T* AddComponent(uint64_t EntityID)
-    {
-        std::cout << "Type not registered" << std::endl;
-        return nullptr;
-    }
+        template<typename Type>
+        static void RegisterComponentImpl()
+        {
+            std::cout << "No template specialization defined. Please use the macro REGISTER_COMPONENT_TEMPLATE(YourComponent)" << std::endl;
+        }
 
-    template <typename T>
-    static void RemoveComponent(uint64_t componentID);
+        template <typename T>
+        static T* AddComponent(uint64_t EntityID)
+        {
+            return DG_ComponentManager::GetInstance().AddComponentImpl<T>(EntityID);
+        }
+
+        template <typename T>
+        static T* AddComponentImpl(uint64_t EntityID)
+        {
+            std::cout << "Type not registered" << std::endl;
+            return nullptr;
+        }
+
+        template <typename T>
+        static void RemoveComponent(uint64_t componentID)
+        {
+            return DG_ComponentManager::GetInstance().RemoveComponentImpl<T>(componentID);
+        }
+
+        template <typename T>
+        static void RemoveComponentImpl(uint64_t componentID)
+        {
+            std::cout << "No template specialization defined. Please use the macro REMOVE_COMPONENT_TEMPLATE(YourComponent)" << std::endl;
+        }
 
 
 
-    static uint32_t GetMaxComponents() { return MAX_COMPONENTS; }
+        static uint32_t GetMaxComponents() { return MAX_COMPONENTS; }
 
-protected:
-    DG_ComponentManager() = default;
+ 
+    private:
+        DG_ComponentManager(){}
+        static std::unique_ptr<DG_ComponentManager> s_Instance;
+        static uint32_t MAX_COMPONENTS;
+        static std::vector<std::shared_ptr<ComponentTrackerPARENT>> m_ComponentTrackers;
+        static std::unordered_map<std::type_index, std::shared_ptr<ComponentTrackerPARENT>> m_ComponentTrackerMap;
 
-private:
-    static DG_ComponentManager* s_Instance;
-    static uint32_t MAX_COMPONENTS;
-    static std::vector<std::shared_ptr<ComponentTrackerPARENT>> m_ComponentTrackers;
-    static std::unordered_map<std::type_index, std::shared_ptr<ComponentTrackerPARENT>> m_ComponentTrackerMap;
-
-};
+    };
 
 #define REGISTER_COMPONENT_TEMPLATE(TYPE) \
-static void DG_ComponentManager::RegisterComponent<TYPE>() \
+static void DG_ComponentManager::RegisterComponentImpl<TYPE>() \
 {\
     std::type_index typeIndex(typeid(TYPE));                                                                                                 \
     if (m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end())                                                                \
@@ -147,7 +185,7 @@ static void DG_ComponentManager::RegisterComponent<TYPE>() \
 }
 
 #define ADD_COMPONENT_TEMPLATE(TYPE)                                                                                                      \
-static TYPE* DG_ComponentManager::AddComponent<TYPE>(uint64_t EntityID)                                       \
+static TYPE* DG_ComponentManager::AddComponentImpl<TYPE>(uint64_t EntityID)                                       \
 {                                                                                                                                         \
     std::type_index typeIndex(typeid(TYPE));                                                                                \
     if (!(m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end()))                                                          \
@@ -168,7 +206,7 @@ static TYPE* DG_ComponentManager::AddComponent<TYPE>(uint64_t EntityID)         
 }
 
 #define REMOVE_COMPONENT_TEMPLATE(TYPE)                                                                                                   \
-static void DG_ComponentManager::RemoveComponent<TYPE>(uint64_t componentID)                                                \
+static void DG_ComponentManager::RemoveComponentImpl<TYPE>(uint64_t componentID)                                                \
 {                                                                                                                                         \
     std::type_index typeIndex(typeid(TYPE));                                                                                \
     const auto& map = m_ComponentTrackerMap.find(typeIndex);                                                                              \
@@ -190,4 +228,5 @@ static void DG_ComponentManager::RemoveComponent<TYPE>(uint64_t componentID)    
         (*VectorIT).SetUse(false);                                                                                                        \
         (*VectorIT).SetEntityID(0);                                                                                                       \
     }                                                                                                                                     \
+}
 }
