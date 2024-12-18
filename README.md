@@ -23,6 +23,10 @@ The components will be packed, for now, in arrays sorted by type. The goal is to
 
 ## Usage
 
+Initialize the library by calling:
+``` cpp
+DogoECS::Init();
+```
 
 Create an entity by calling `DG_EntityManager::CreateEntity();`:
 ``` cpp

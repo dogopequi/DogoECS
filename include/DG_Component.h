@@ -45,7 +45,7 @@ namespace DogoECS
     {
         ComponentTracker() {}
         ComponentTracker(const ComponentTracker& other) = delete;
-        ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), /*EntityMapPointer(std::move(other.EntityMapPointer)),*/ ComponentMapPointer(std::move(other.ComponentMapPointer)) {}
+        ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), ComponentMapPointer(std::move(other.ComponentMapPointer)) {}
         std::unique_ptr<std::vector<TYPE>> VectorPointer = std::make_unique<std::vector<TYPE>>();
         int32_t VectorLastUsed;
         std::unique_ptr<std::unordered_map<uint64_t, TYPE*>> ComponentMapPointer = std::make_unique<std::unordered_map<uint64_t, TYPE*>>();
@@ -102,6 +102,18 @@ namespace DogoECS
 
 
         template<typename Type>
+        static void UpdateComponents()
+        {
+            DG_ComponentManager::GetInstance().UpdateComponentsImpl<Type>();
+        }
+
+        template<typename Type>
+        static void UpdateComponentsImpl()
+        {
+            std::cout << "No template specialization defined. Please use the macro UPDATE_COMPONENTS_TEMPLATE(YourComponent)" << std::endl;
+        }
+
+        template<typename Type>
         static void RegisterComponent()
         {
             DG_ComponentManager::GetInstance().RegisterComponentImpl<Type>();
@@ -151,6 +163,19 @@ namespace DogoECS
         static std::unordered_map<std::type_index, std::shared_ptr<ComponentTrackerPARENT>> m_ComponentTrackerMap;
 
     };
+#define UPDATE_COMPONENTS_TEMPLATE(TYPE) \
+static void DG_ComponentManager::UpdateComponentsImpl<TYPE>() \
+{ \
+    std::type_index typeIndex(typeid(TYPE)); \
+    if (m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end()) \
+    { \
+        auto it = m_ComponentTrackerMap.find(typeIndex); \
+        it->second->UpdateComponents(); \
+        return; \
+    } \
+    std::cout << "Type not found: " << typeIndex.name() << std::endl; \
+}
+
 
 #define REGISTER_COMPONENT_TEMPLATE(TYPE) \
 static void DG_ComponentManager::RegisterComponentImpl<TYPE>() \
