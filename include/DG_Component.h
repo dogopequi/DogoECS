@@ -52,7 +52,7 @@ namespace DogoECS
 
         void UpdateComponents() override
         {
-            auto& vector = *VectorPointer; // Dereference unique_ptr to access the vector
+            auto& vector = *VectorPointer;
             for (size_t j = 0; j < vector.size(); j++)
             {
                 if (j > VectorLastUsed)
@@ -73,7 +73,6 @@ namespace DogoECS
     public:
         static DG_ComponentManager& GetInstance();
 
-        // Delete copy constructor and assignment operator to prevent copying
         DG_ComponentManager(const DG_ComponentManager&) = delete;
         DG_ComponentManager& operator=(const DG_ComponentManager&) = delete;
         ~DG_ComponentManager() {}
@@ -84,7 +83,7 @@ namespace DogoECS
             DG_ComponentManager::GetInstance().UpdateImpl();
         }
 
-
+    private:
         static void UpdateImpl()
         {
             for (const auto& tracker : m_ComponentTrackers)
@@ -100,58 +99,58 @@ namespace DogoECS
             }
         }
 
-
+    public:
         template<typename Type>
         static void UpdateComponents()
         {
             DG_ComponentManager::GetInstance().UpdateComponentsImpl<Type>();
         }
-
+    private:
         template<typename Type>
-        static void UpdateComponentsImpl()
+        void UpdateComponentsImpl()
         {
             std::cout << "No template specialization defined. Please use the macro UPDATE_COMPONENTS_TEMPLATE(YourComponent)" << std::endl;
         }
-
+    public:
         template<typename Type>
         static void RegisterComponent()
         {
             DG_ComponentManager::GetInstance().RegisterComponentImpl<Type>();
         }
-
+    private:
         template<typename Type>
-        static void RegisterComponentImpl()
+        void RegisterComponentImpl()
         {
             std::cout << "No template specialization defined. Please use the macro REGISTER_COMPONENT_TEMPLATE(YourComponent)" << std::endl;
         }
-
+    public:
         template <typename T>
         static T* AddComponent(uint64_t EntityID)
         {
             return DG_ComponentManager::GetInstance().AddComponentImpl<T>(EntityID);
         }
-
+    private:
         template <typename T>
-        static T* AddComponentImpl(uint64_t EntityID)
+        T* AddComponentImpl(uint64_t EntityID)
         {
             std::cout << "Type not registered" << std::endl;
             return nullptr;
         }
-
+    public:
         template <typename T>
         static void RemoveComponent(uint64_t componentID)
         {
             return DG_ComponentManager::GetInstance().RemoveComponentImpl<T>(componentID);
         }
-
+    private:
         template <typename T>
-        static void RemoveComponentImpl(uint64_t componentID)
+        void RemoveComponentImpl(uint64_t componentID)
         {
             std::cout << "No template specialization defined. Please use the macro REMOVE_COMPONENT_TEMPLATE(YourComponent)" << std::endl;
         }
 
 
-
+    public:
         static uint32_t GetMaxComponents() { return MAX_COMPONENTS; }
 
  
@@ -164,7 +163,7 @@ namespace DogoECS
 
     };
 #define UPDATE_COMPONENTS_TEMPLATE(TYPE) \
-static void DG_ComponentManager::UpdateComponentsImpl<TYPE>() \
+void DG_ComponentManager::UpdateComponentsImpl<TYPE>() \
 { \
     std::type_index typeIndex(typeid(TYPE)); \
     if (m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end()) \
@@ -178,7 +177,7 @@ static void DG_ComponentManager::UpdateComponentsImpl<TYPE>() \
 
 
 #define REGISTER_COMPONENT_TEMPLATE(TYPE) \
-static void DG_ComponentManager::RegisterComponentImpl<TYPE>() \
+void DG_ComponentManager::RegisterComponentImpl<TYPE>() \
 {\
     std::type_index typeIndex(typeid(TYPE));                                                                                                 \
     if (m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end())                                                                \
@@ -210,7 +209,7 @@ static void DG_ComponentManager::RegisterComponentImpl<TYPE>() \
 }
 
 #define ADD_COMPONENT_TEMPLATE(TYPE)                                                                                                      \
-static TYPE* DG_ComponentManager::AddComponentImpl<TYPE>(uint64_t EntityID)                                       \
+TYPE* DG_ComponentManager::AddComponentImpl<TYPE>(uint64_t EntityID)                                       \
 {                                                                                                                                         \
     std::type_index typeIndex(typeid(TYPE));                                                                                \
     if (!(m_ComponentTrackerMap.find(typeIndex) != m_ComponentTrackerMap.end()))                                                          \
@@ -231,7 +230,7 @@ static TYPE* DG_ComponentManager::AddComponentImpl<TYPE>(uint64_t EntityID)     
 }
 
 #define REMOVE_COMPONENT_TEMPLATE(TYPE)                                                                                                   \
-static void DG_ComponentManager::RemoveComponentImpl<TYPE>(uint64_t componentID)                                                \
+void DG_ComponentManager::RemoveComponentImpl<TYPE>(uint64_t componentID)                                                \
 {                                                                                                                                         \
     std::type_index typeIndex(typeid(TYPE));                                                                                \
     const auto& map = m_ComponentTrackerMap.find(typeIndex);                                                                              \

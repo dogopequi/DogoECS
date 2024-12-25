@@ -1,8 +1,9 @@
-// FOR TESTS....!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-//#include "../include/DogoECS.h"
-//#include <iostream>
+//// FOR// TESTS....!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //
+#include "../include/DogoECS.h"
+#include <iostream>
+#include "../include/Component.h"
+
 //namespace DogoECS
 //{
 //    class TransformComponent : public DG_Component
@@ -86,12 +87,12 @@
 //
 //
 //}
-//    void main()
-//    {
-//        using namespace DogoECS;
-//        Init();
-//        Entity* E1 = DG_EntityManager::CreateEntity();
-//        DG_ComponentManager::RegisterComponent<AudioComponent>();
-//        AudioComponent* a1 = E1->AddComponent<AudioComponent>();
-//        DG_ComponentManager::UpdateComponents<AudioComponent>();
-//    }
+    void main()
+    {
+        using namespace DogoECS;
+        Init();
+        Entity* E1 = DG_EntityManager::CreateEntity();
+        DG_ComponentManager::RegisterComponent<AudioComponent>();
+        AudioComponent* a1 = E1->AddComponent<AudioComponent>();
+        DG_ComponentManager::UpdateComponents<AudioComponent>();
+    }
