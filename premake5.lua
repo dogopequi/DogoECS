@@ -1,6 +1,6 @@
 workspace "DogoECS"
     architecture "x86_64"
-    startproject "Sandbox"
+    startproject "DogoECS"
 
     configurations
     {
@@ -11,7 +11,7 @@ workspace "DogoECS"
     outputDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 project "DogoECS"
-    kind "ConsoleApp"
+    kind "StaticLib"
     language "C++"
     cppdialect "C++17"
     staticruntime "on"
