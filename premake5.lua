@@ -21,13 +21,13 @@ project "DogoECS"
 
     files
     {
-        "%{prj.name}/include/**.h",
-        "%{prj.name}/src/**.cpp"
+        "include/**.h",
+        "src/**.cpp"
     }
 
     includedirs
     {
-        "%{prj.name}/include",
+        "include",
     }
 
     filter "system:windows"

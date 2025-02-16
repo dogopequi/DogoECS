@@ -19,7 +19,7 @@ namespace DogoECS
         template<typename TYPE>
         void RemoveComponent(uint64_t componentID)
         {
-            DG_ComponentManager::RemoveComponent<TYPE>(componentID);
+            DG_ComponentManager::GetInstance().RemoveComponent<TYPE>(componentID);
         }
 
         uint64_t GetID_ui64() const { return m_EntityID.GetUUID_ui64(); }
