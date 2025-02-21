@@ -5,7 +5,7 @@
 #include <vector>
 #include <unordered_map>
 #include <typeindex>
-
+#include <algorithm>
 #include "UUID.h"
 namespace DogoECS
 {
@@ -46,7 +46,7 @@ namespace DogoECS
     public:
         ComponentTracker() {}
         ComponentTracker(const ComponentTracker& other) = delete;
-        ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), ComponentMapPointer(std::move(other.ComponentMapPointer)) {}
+        ComponentTracker(ComponentTracker&& other) noexcept : VectorPointer(std::move(other.VectorPointer)), VectorLastUsed(std::move(other.VectorLastUsed)), ComponentMapPointerByEntityID(std::move(other.ComponentMapPointerByEntityID)),  ComponentMapPointerByComponentID(std::move(other.ComponentMapPointerByComponentID)) {}
         std::unique_ptr<std::vector<TYPE>> VectorPointer = std::make_unique<std::vector<TYPE>>();
         int32_t VectorLastUsed;
         std::unique_ptr<std::unordered_map<uint64_t, TYPE*>> ComponentMapPointerByEntityID = std::make_unique<std::unordered_map<uint64_t, TYPE*>>();
@@ -157,10 +157,9 @@ namespace DogoECS
                 }
             }
             auto VectorIT = std::find_if(componentTracker->VectorPointer->begin(), componentTracker->VectorPointer->end(),     
-                [componentID](TYPE& component) {                                                                               
+                [componentID](TYPE& component) -> bool{                                                                               
                     return component.GetComponentID_ui64() == componentID;                                                     
-                });                                                                                                            
-                                                                                                                               
+                });                                                                                                                                                                          
             if (VectorIT != componentTracker->VectorPointer->end())                                                            
             {                                                                                                                  
                 *VectorIT = TYPE();                                                                                            
