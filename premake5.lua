@@ -32,11 +32,11 @@ project "DogoECS"
 
     filter "system:windows"
         system "windows"
-        systemversion = "latest"
+        systemversion "latest"
 
     filter "system:linux"
         system "linux"
-        systemversion = "latest"
+        systemversion "latest"
 
        buildoptions
        {
