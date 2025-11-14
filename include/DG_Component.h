@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <typeindex>
 #include <algorithm>
-#include "UUID.h"
 namespace DogoECS
 {
     struct DG_Component
@@ -15,14 +14,18 @@ namespace DogoECS
         DG_Component() : m_ComponentID(++ID_COUNTER){  }
         DG_Component(uint64_t id) : m_EntityID(id), m_ComponentID(++ID_COUNTER) {}
 
-        uint64_t GetEntityID_ui64() const { return m_EntityID; }
-        uint64_t GetComponentID_ui64() const { return m_ComponentID; }
+        uint64_t GetEntityID() const { return m_EntityID; }
+        uint64_t GetComponentID() const { return m_ComponentID; }
 
         void SetEntityID(uint64_t e) { m_EntityID = e; }
+
+        void SetIndex(size_t i) { m_Index = i; }
+        size_t GetIndex() const { return m_Index; }
 
     protected:
         uint64_t m_EntityID;
         uint64_t m_ComponentID;
+        size_t   m_Index;
         inline static std::atomic<uint64_t> ID_COUNTER{ 0 };
     };
 
@@ -46,6 +49,7 @@ namespace DogoECS
             ComponentType& comp = m_Components[activeCount];
             comp = ComponentType();
             comp.SetEntityID(entityID);
+            comp.SetIndex(activeCount);
             m_Active[activeCount] = 1;
 
             m_EntityIndices[entityID].push_back(activeCount);
@@ -61,6 +65,18 @@ namespace DogoECS
 
             m_EntityIndices[entityID].clear();
         }
+
+        bool RemoveComponent(uint64_t entityID, size_t index)
+        {
+            m_Active[index] = 0;
+
+            auto& vec = m_EntityIndices[entityID];
+            vec.erase(std::remove(vec.begin(), vec.end(), index), vec.end());
+
+            return true;
+        }
+
+
 
         struct ActiveIterator {
             ComponentType* ptr;
@@ -101,10 +117,6 @@ namespace DogoECS
         size_t activeCount = 0;
     };
 
-
-
-
-
     class DG_ComponentManager {
     public:
         DG_ComponentManager(uint64_t maxcomponents, uint64_t maxentities) : m_MaxComponents(maxcomponents), m_MaxEntities(maxentities) {}
@@ -117,19 +129,19 @@ namespace DogoECS
         }
 
         template<typename ComponentType>
-        ComponentType* AddComponent(uint64_t entityID)
+        ComponentType* AddComponent(Entity* entity)
         {
             auto tracker = GetTracker<ComponentType>();
             if (!tracker) return nullptr;
-            return tracker->AddComponent(entityID);
+            return tracker->AddComponent(entity->GetID());
         }
 
         template<typename ComponentType>
-        std::vector<ComponentType*> GetComponents(uint64_t entityID)
+        std::vector<ComponentType*> GetComponents(Entity* entity)
         {
             auto tracker = GetTracker<ComponentType>();
             if (!tracker) return {};
-            return tracker->GetComponents(entityID);
+            return tracker->GetComponents(entity->GetID());
         }
 
         template<typename ComponentType>
@@ -147,6 +159,21 @@ namespace DogoECS
                 return std::static_pointer_cast<ComponentTracker<ComponentType>>(it->second);
             return nullptr;
         }
+        template<typename ComponentType>
+        bool RemoveComponent(ComponentType* component)
+        {
+            auto tracker = GetTracker<ComponentType>();
+            if (!tracker) return false;
+            return tracker->RemoveComponent(component->GetEntityID(), component->GetIndex());
+        }
+        template<typename ComponentType>
+        void RemoveComponents(Entity* entity)
+        {
+            auto tracker = GetTracker<ComponentType>();
+            if (tracker)
+                tracker->RemoveComponents(entity->GetID());
+        }
+
 
     private:
         uint64_t m_MaxComponents;

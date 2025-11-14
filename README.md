@@ -22,46 +22,50 @@ An entity will have member functions to add or remove components, which will cal
 The components will be packed, for now, in arrays sorted by type. The goal is to update each component array at once, so the CPU doesn't have to do cold reads.
 
 ## Usage
-
-Initialize the library by calling:
+Create the EntityManager and the ComponentManager. ComponentManager needs the maximum number of entities to optimize the lookups for entity ID.
 ``` cpp
-DogoECS::Init();
+DG_EntityManager entityManager(NUM_ENTITIES);
+DG_ComponentManager componentManager(NUM_COMPONENTS, NUM_ENTITIES);
 ```
 
-Create an entity by calling `DG_EntityManager::CreateEntity();`:
+Create an entity by calling `entityManager.CreateEntity();`:
 ``` cpp
-Entity* E1 = DG_EntityManager::CreateEntity();
+Entity* YourEntity = entityManager.CreateEntity()
 ```
-This function returns a pointer to an Entity. To check if it's valid just place it in an if() check.
+This function returns a pointer to an Entity.
 
 To add a component first you need to register them.
-This is done by calling `DG_ComponentManager::RegisterComponent<YourComponent>();`
+This is done by calling `componentManager.RegisterComponent<YourComponent>();` Your Component needs to inherit from DG_Component.
 
 This function returns nothing, it simply allocates memory for the components.
  
-If you try to call it twice for the same class of component, it exits since it has already allocated the memory. Soon I will add a parameter to let the user decide how many slots to store.
-
-To add a component then you call `DG_ComponentManager::AddComponent<YourComponent>();`
-
+If you try to call it twice for the same class of component, it exits since it has already allocated the memory.
+To add a component then you do:
 ``` cpp
-YourComponent* Component = YourEntity->AddComponent<YourComponent>();
+YourComponent* component = componentManager.AddComponent<YourComponent>(YourEntity);
 ```
 
-
-This function returns the pointer to the first available component in memory and associates it with the entity its called from.
 
 To remove the component it's very similar as adding one:
 ``` cpp
-YourEntity->RemoveComponent<YourComponent>(Component->GetComponentID_ui64());
+componentManager.RemoveComponent<YourComponent>(component);
 ```
 
-This function doesn't actually deallocate memory, it simply tells the ECS to not use this component and deassociates the EntityID to a 0. 
 
-Soon I want to add a mechanicsm to sort the vector by its Use flag. I will probably remove the UUID parameter and just make it a const auto& Component.
+This function doesn't actually deallocate memory, the ComponentManager reuses components.
 
-Calling `DG_ComponentManager::Update()` will call every used component in memory by order of type. Soon I want to add a way for the user to define an order of Update.
+You can also remove all the components associated with an entity:
+``` cpp
+componentManager.RemoveComponents<YourComponent>(YourEntity);
+```
 
-That's it for now.
+The stress test with 5000 entities and 10000 components produced these results on my machine:
+Time(ms) :
+    Entity creation : 0
+    Add components : 6
+    Access / modify components : 0
+    Remove single components : 6
+    Remove remaining components : 4
 
 ## License
 

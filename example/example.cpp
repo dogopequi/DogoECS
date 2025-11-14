@@ -1,13 +1,15 @@
 // STRESS TEST
-//Created 5000 entities.Modified 10000 components.Time(ms) : 
-// Entity creation : 1 
-// Add components : 8 
-// Access / modify components : 4 
-// Remove components : 3
-
+//Created 5000 entities.
+//Modified 10000 components.
+//Time(ms) :
+//    Entity creation : 0
+//    Add components : 6
+//    Access / modify components : 0
+//    Remove single components : 6
+//    Remove remaining components : 4
 #include <iostream>
-#include <vector>
 #include <chrono>
+#include <vector>
 #include "../include/DogoECS.h"
 
 using namespace DogoECS;
@@ -26,55 +28,58 @@ int main()
     componentManager.RegisterComponent<Position>();
     componentManager.RegisterComponent<Velocity>();
 
-    std::vector<DG_EntityManager::Entity*> allEntities;
+    std::vector<Entity*> allEntities;
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    // Create entities
+    //Create entities
     for (size_t i = 0; i < NUM_ENTITIES; i++)
         allEntities.push_back(entityManager.CreateEntity());
 
     auto mid1 = std::chrono::high_resolution_clock::now();
 
     // Add components
-    for (auto* e : allEntities)
-    {
-        componentManager.AddComponent<Position>(e->GetID_ui64());
-        componentManager.AddComponent<Velocity>(e->GetID_ui64());
+    std::vector<Position*> allPositions;
+    std::vector<Velocity*> allVelocities;
+    for (auto* e : allEntities) {
+        allPositions.push_back(componentManager.AddComponent<Position>(e));
+        allVelocities.push_back(componentManager.AddComponent<Velocity>(e));
     }
 
     auto mid2 = std::chrono::high_resolution_clock::now();
 
-    //Access and modify components
-    size_t modifiedCount = 0;
-
-    auto posTracker = componentManager.GetTracker<Position>();
-    for (auto it = posTracker->begin(); it != posTracker->end(); ++it)
-    {
-        it->x = 1.0f; it->y = 2.0f; it->z = 3.0f;
-        modifiedCount++;
+   //Modify components
+    size_t count = 0;
+    for (auto* pos : allPositions) {
+        pos->x = 1.f; pos->y = 2.f; pos->z = 3.f;
+        count++;
     }
-
-    auto velTracker = componentManager.GetTracker<Velocity>();
-    for (auto it = velTracker->begin(); it != velTracker->end(); ++it)
-    {
-        it->vx = 0.1f; it->vy = 0.2f; it->vz = 0.3f;
-        modifiedCount++;
+    for (auto* vel : allVelocities) {
+        vel->vx = 0.1f; vel->vy = 0.2f; vel->vz = 0.3f;
+        count++;
     }
 
     auto mid3 = std::chrono::high_resolution_clock::now();
 
-    //remove components
-    for (auto* e : allEntities)
-    {
-        posTracker->RemoveComponents(e->GetID_ui64());
-        velTracker->RemoveComponents(e->GetID_ui64());
+    // Remove half the components individually
+    for (size_t i = 0; i < NUM_ENTITIES; i += 2) {
+        componentManager.RemoveComponent(allPositions[i]);
+        componentManager.RemoveComponent(allVelocities[i]);
+    }
+
+    auto mid4 = std::chrono::high_resolution_clock::now();
+
+    // remove remaining components by entity
+    for (size_t i = 1; i < NUM_ENTITIES; i += 2) {
+        componentManager.RemoveComponents<Position>(allEntities[i]);
+        componentManager.RemoveComponents<Velocity>(allEntities[i]);
     }
 
     auto end = std::chrono::high_resolution_clock::now();
 
     std::cout << "Created " << NUM_ENTITIES << " entities.\n";
-    std::cout << "Modified " << modifiedCount << " components.\n";
+    std::cout << "Modified " << count << " components.\n";
+
     std::cout << "Time (ms):\n";
     std::cout << "  Entity creation: "
         << std::chrono::duration_cast<std::chrono::milliseconds>(mid1 - start).count() << "\n";
@@ -82,8 +87,10 @@ int main()
         << std::chrono::duration_cast<std::chrono::milliseconds>(mid2 - mid1).count() << "\n";
     std::cout << "  Access/modify components: "
         << std::chrono::duration_cast<std::chrono::milliseconds>(mid3 - mid2).count() << "\n";
-    std::cout << "  Remove components: "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid3).count() << "\n";
+    std::cout << "  Remove single components: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(mid4 - mid3).count() << "\n";
+    std::cout << "  Remove remaining components: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid4).count() << "\n";
 
     return 0;
 }

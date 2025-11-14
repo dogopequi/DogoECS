@@ -1,23 +1,22 @@
 #pragma once
-#include "UUID.h"
 #include <vector>
 #include <cstdint>
 
 namespace DogoECS
 {
-    class DG_EntityManager
+   class Entity
+   {
+   public:
+       Entity(uint64_t id) : m_EntityID(id) {}
+       uint64_t GetID() const { return m_EntityID; }
+
+   private:
+       uint64_t m_EntityID;
+   };
+
+   class DG_EntityManager
     {
     public:
-        class Entity
-        {
-        public:
-            Entity(uint64_t id) : m_EntityID(id) {}
-            uint64_t GetID_ui64() const { return m_EntityID; }
-
-        private:
-            uint64_t m_EntityID;
-        };
-
         DG_EntityManager(uint64_t maxEntities)
             : MAX_ENTITIES(maxEntities)
         {
