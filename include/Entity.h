@@ -1,89 +1,62 @@
 #pragma once
-#include "DG_Component.h"
-#include <queue>
+#include "UUID.h"
+#include <vector>
+#include <cstdint>
+
 namespace DogoECS
 {
-    class Entity
-    {
-    public:
-        Entity() { m_EntityID = UUID(); }
-
-        ~Entity() {}
-
-        template<typename TYPE>
-        TYPE* AddComponent()
-        {
-            return DG_ComponentManager::AddComponent<TYPE>(m_EntityID.GetUUID_ui64());
-        }
-
-        template<typename TYPE>
-        void RemoveComponent(uint64_t componentID)
-        {
-            DG_ComponentManager::GetInstance().RemoveComponent<TYPE>(componentID);
-        }
-
-        uint64_t GetID_ui64() const { return m_EntityID.GetUUID_ui64(); }
-
-    private:
-        UUID m_EntityID;
-    };
-
     class DG_EntityManager
     {
     public:
-        static DG_EntityManager& GetInstance();
-        DG_EntityManager(const DG_EntityManager&) = delete;
-        DG_EntityManager& operator=(const DG_EntityManager&) = delete;
-        ~DG_EntityManager() {}
-
-
-        static Entity* CreateEntity()
+        class Entity
         {
-            return DG_EntityManager::GetInstance().CreateEntityImpl();
+        public:
+            Entity(uint64_t id) : m_EntityID(id) {}
+            uint64_t GetID_ui64() const { return m_EntityID; }
+
+        private:
+            uint64_t m_EntityID;
+        };
+
+        DG_EntityManager(uint64_t maxEntities)
+            : MAX_ENTITIES(maxEntities)
+        {
+            m_Entities.reserve(MAX_ENTITIES);
         }
 
-        static void DestroyEntity(Entity entity)
-        {
-            DG_EntityManager::GetInstance().DestroyEntityImpl(entity);
-        }
+        ~DG_EntityManager() = default;
 
-
-    private:
-
-        Entity* CreateEntityImpl()
+        Entity* CreateEntity()
         {
             if (m_LivingEntityCount >= MAX_ENTITIES)
-            {
                 return nullptr;
-            }
-            Entity* id = &m_AvailableEntities.front();
-            m_AvailableEntities.pop();
-            ++m_LivingEntityCount;
-            return id;
+
+            m_Entities.emplace_back(m_LivingEntityCount);
+            m_LivingEntityCount++;
+            return &m_Entities.back();
         }
 
-        void DestroyEntityImpl(Entity entity)
+        void DestroyEntity(Entity* entity)
         {
-            m_AvailableEntities.push(entity);
-            m_LivingEntityCount--;
-        }
+            if (!entity) return;
 
-
-        DG_EntityManager()
-        {
-            for (int i = 0; i < MAX_ENTITIES; i++)
+            auto it = std::find_if(m_Entities.begin(), m_Entities.end(),
+                [entity](const Entity& e) { return &e == entity; });
+            if (it != m_Entities.end())
             {
-                Entity e;
-                m_AvailableEntities.push(e);
+                std::swap(*it, m_Entities.back());
+                m_Entities.pop_back();
+                m_LivingEntityCount--;
             }
         }
-        static std::unique_ptr<DG_EntityManager> s_Instance;
-        static uint32_t MAX_ENTITIES;
 
-        static std::queue<Entity> m_AvailableEntities;
+        uint64_t GetLivingEntityCount() const { return m_LivingEntityCount; }
 
-        static uint32_t m_LivingEntityCount;
+        std::vector<Entity>& GetAllEntities() { return m_Entities; }
 
-
+    private:
+        uint64_t MAX_ENTITIES;
+        uint64_t m_LivingEntityCount = 0;
+        std::vector<Entity> m_Entities;
     };
 }

@@ -21,8 +21,7 @@ project "DogoECS"
 
     files
     {
-        "include/**.h",
-        "src/**.cpp"
+        "include/**.h"
     }
 
     includedirs

@@ -4,16 +4,16 @@
 
 namespace DogoECS
 {
-    static std::random_device s_RandomDevice;
-    static std::mt19937_64 s_Engine(s_RandomDevice());
-    static std::uniform_int_distribution<uint64_t> s_UniformDistribution;
 
     class UUID
     {
     public:
-        UUID() : m_Integer(s_UniformDistribution(s_Engine))
+        UUID()
         {
-
+            static std::random_device rd;
+            static std::mt19937_64 eng(rd());
+            static std::uniform_int_distribution<uint64_t> dist(1, UINT64_MAX);
+            m_Integer = dist(eng);
         }
         UUID(uint64_t id) : m_Integer(id)
         {
