@@ -4,11 +4,11 @@
  I'm developing this for my game engine.
 
 ## Build Instructions
-Run "GenerateProjects.bat" or "GenerateProjectsLinux.sh".
-
-It's made to create a VS2022 solution file on Windows and makefiles on Linux by default, alter as you wish by consulting premake's supported targets:
-
+Run "GenerateProjects.bat" or "GenerateProjectsLinux.sh". If you want to play around with the Example provided.
 [Premake](https://premake.github.io/docs/using-premake)
+
+This library is header only, you can just add the include path to the header files.
+
 
 ## Goals
 - Fast
