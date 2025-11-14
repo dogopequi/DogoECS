@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <typeindex>
 #include <algorithm>
+#include <Entity.h>
 namespace DogoECS
 {
     struct DG_Component
