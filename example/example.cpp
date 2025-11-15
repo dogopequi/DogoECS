@@ -2,11 +2,11 @@
 //Created 5000 entities.
 //Modified 10000 components.
 //Time(ms) :
-//    Entity creation : 0
-//    Add components : 6
-//    Access / modify components : 0
-//    Remove single components : 6
-//    Remove remaining components : 4
+//    Entity creation : 1
+//    Add components : 5
+//    Access / modify components : 3
+//    Remove single components : 2
+//    Remove remaining components : 2
 #include <iostream>
 #include <chrono>
 #include <vector>
@@ -32,44 +32,54 @@ int main()
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    //Create entities
+    // Create entities
     for (size_t i = 0; i < NUM_ENTITIES; i++)
         allEntities.push_back(entityManager.CreateEntity());
 
     auto mid1 = std::chrono::high_resolution_clock::now();
 
     // Add components
-    std::vector<Position*> allPositions;
-    std::vector<Velocity*> allVelocities;
     for (auto* e : allEntities) {
-        allPositions.push_back(componentManager.AddComponent<Position>(e));
-        allVelocities.push_back(componentManager.AddComponent<Velocity>(e));
+        componentManager.AddComponent<Position>(e);
+        componentManager.AddComponent<Velocity>(e);
     }
 
     auto mid2 = std::chrono::high_resolution_clock::now();
 
-   //Modify components
+    // access/modify all Position components
     size_t count = 0;
-    for (auto* pos : allPositions) {
-        pos->x = 1.f; pos->y = 2.f; pos->z = 3.f;
+    for (auto it = componentManager.AllActiveBegin<Position>();
+        it != componentManager.AllActiveEnd<Position>(); ++it)
+    {
+        it->x = 1.f;
+        it->y = 2.f;
+        it->z = 3.f;
         count++;
     }
-    for (auto* vel : allVelocities) {
-        vel->vx = 0.1f; vel->vy = 0.2f; vel->vz = 0.3f;
+
+    // Access/modify all Velocity components
+    for (auto it = componentManager.AllActiveBegin<Velocity>();
+        it != componentManager.AllActiveEnd<Velocity>(); ++it)
+    {
+        it->vx = 0.1f;
+        it->vy = 0.2f;
+        it->vz = 0.3f;
         count++;
     }
 
     auto mid3 = std::chrono::high_resolution_clock::now();
 
-    // Remove half the components individually
+    // remove half the components individually
     for (size_t i = 0; i < NUM_ENTITIES; i += 2) {
-        componentManager.RemoveComponent(allPositions[i]);
-        componentManager.RemoveComponent(allVelocities[i]);
+        auto trackerPos = componentManager.GetTracker<Position>();
+        auto trackerVel = componentManager.GetTracker<Velocity>();
+        if (trackerPos) trackerPos->RemoveComponents(allEntities[i]->GetID());
+        if (trackerVel) trackerVel->RemoveComponents(allEntities[i]->GetID());
     }
 
     auto mid4 = std::chrono::high_resolution_clock::now();
 
-    // remove remaining components by entity
+    //remove remaining components by entity
     for (size_t i = 1; i < NUM_ENTITIES; i += 2) {
         componentManager.RemoveComponents<Position>(allEntities[i]);
         componentManager.RemoveComponents<Velocity>(allEntities[i]);

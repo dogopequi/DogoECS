@@ -42,6 +42,35 @@ namespace DogoECS
                 vec.reserve(8);
         }
 
+        std::vector<ComponentType*> GetAllActiveComponents()
+        {
+            std::vector<ComponentType*> activeComponents;
+            activeComponents.reserve(activeCount);
+
+            for (size_t i = 0; i < m_Components.size(); ++i)
+            {
+                if (m_Active[i])
+                    activeComponents.push_back(&m_Components[i]);
+            }
+
+            return activeComponents;
+        }
+
+        std::vector<ComponentType*> GetComponents(uint64_t entityID)
+        {
+            std::vector<ComponentType*> result;
+            if (entityID >= m_EntityIndices.size()) return result;
+
+            result.reserve(m_EntityIndices[entityID].size());
+
+            for (size_t idx : m_EntityIndices[entityID])
+            {
+                if (m_Active[idx])
+                    result.push_back(&m_Components[idx]);
+            }
+            return result;
+        }
+
         ComponentType* AddComponent(size_t entityID)
         {
             if (activeCount >= m_Components.size())
@@ -75,6 +104,20 @@ namespace DogoECS
             vec.erase(std::remove(vec.begin(), vec.end(), index), vec.end());
 
             return true;
+        }
+
+        ComponentType* GetComponent(uint64_t entityID)
+        {
+            if (entityID >= m_EntityIndices.size())
+                return nullptr;
+
+            for (size_t idx : m_EntityIndices[entityID])
+            {
+                if (m_Active[idx])
+                    return &m_Components[idx];
+            }
+
+            return nullptr;
         }
 
 
@@ -116,6 +159,7 @@ namespace DogoECS
         std::vector<uint8_t> m_Active;
         std::vector<std::vector<size_t>> m_EntityIndices;
         size_t activeCount = 0;
+        std::vector<ComponentType> m_ActiveComponents;
     };
 
     class DG_ComponentManager {
@@ -136,22 +180,46 @@ namespace DogoECS
             if (!tracker) return nullptr;
             return tracker->AddComponent(entity->GetID());
         }
-
         template<typename ComponentType>
-        std::vector<ComponentType*> GetComponents(Entity* entity)
+        ComponentType* AddComponent(uint64_t entityID)
         {
             auto tracker = GetTracker<ComponentType>();
-            if (!tracker) return {};
-            return tracker->GetComponents(entity->GetID());
+            if (!tracker) return nullptr;
+            return tracker->AddComponent(entityID);
         }
 
         template<typename ComponentType>
-        std::vector<ComponentType>& GetAllActivem_Components()
+        auto AllActiveBegin()
         {
             auto tracker = GetTracker<ComponentType>();
             if (!tracker) throw std::runtime_error("Component not registered");
-            return tracker->GetAllActiveComponents();
+            return tracker->begin();
         }
+
+        template<typename ComponentType>
+        auto AllActiveEnd()
+        {
+            auto tracker = GetTracker<ComponentType>();
+            if (!tracker) throw std::runtime_error("Component not registered");
+            return tracker->end();
+        }
+
+        template<typename ComponentType>
+        auto ComponentsBegin(Entity* entity)
+        {
+            auto tracker = GetTracker<ComponentType>();
+            if (!tracker) return tracker->end();
+            return tracker->begin();
+        }
+
+        template<typename ComponentType>
+        auto ComponentsEnd(Entity* entity)
+        {
+            auto tracker = GetTracker<ComponentType>();
+            if (!tracker) return tracker->end();
+            return tracker->end();
+        }
+
         template<typename ComponentType>
         std::shared_ptr<ComponentTracker<ComponentType>> GetTracker()
         {
@@ -174,6 +242,21 @@ namespace DogoECS
             if (tracker)
                 tracker->RemoveComponents(entity->GetID());
         }
+        template<typename ComponentType>
+        ComponentType* GetComponent(Entity* entity)
+        {
+            auto tracker = GetTracker<ComponentType>();
+            if (!tracker) return nullptr;
+            return tracker->GetComponent(entity->GetID());
+        }
+        template<typename ComponentType>
+        ComponentType* GetComponent(uint64_t entityID)
+        {
+            auto tracker = GetTracker<ComponentType>();
+            if (!tracker) return nullptr;
+            return tracker->GetComponent(entityID);
+        }
+
 
 
     private:
