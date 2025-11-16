@@ -71,13 +71,15 @@ namespace DogoECS
             return result;
         }
 
-        ComponentType* AddComponent(size_t entityID)
+        template<typename... Args>
+        ComponentType* AddComponent(uint32_t entityID, Args&&... args)
         {
             if (activeCount >= m_Components.size())
                 throw std::runtime_error("No available component slots.");
 
-            ComponentType& comp = m_Components[activeCount];
-            comp = ComponentType();
+            m_Components[activeCount].~ComponentType();
+            ComponentType& comp = *new (&m_Components[activeCount]) ComponentType(std::forward<Args>(args)...);
+
             comp.SetEntityID(entityID);
             comp.SetIndex(activeCount);
             m_Active[activeCount] = 1;
@@ -186,6 +188,21 @@ namespace DogoECS
             auto tracker = GetTracker<ComponentType>();
             if (!tracker) return nullptr;
             return tracker->AddComponent(entityID);
+        }
+
+        template<typename ComponentType, typename... Args>
+        ComponentType* AddComponent(Entity* entity, Args&&... args)
+        {
+            auto tracker = GetTracker<ComponentType>();
+            if (!tracker) return nullptr;
+            return tracker->AddComponent(entity->GetID(), std::forward<Args>(args)...);
+        }
+        template<typename ComponentType, typename... Args>
+        ComponentType* AddComponent(uint64_t entityID, Args&&... args)
+        {
+            auto tracker = GetTracker<ComponentType>();
+            if (!tracker) return nullptr;
+            return tracker->AddComponent(entity->GetID(), std::forward<Args>(args)...);
         }
 
         template<typename ComponentType>
