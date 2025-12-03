@@ -6,7 +6,9 @@
 #include <unordered_map>
 #include <typeindex>
 #include <algorithm>
+#include <functional>
 #include <Entity.h>
+
 namespace DogoECS
 {
     struct DG_Component
@@ -34,18 +36,16 @@ namespace DogoECS
     class ComponentTracker {
     public:
         ComponentTracker(size_t maxComponents, size_t maxEntities)
-            : m_Components(maxComponents), m_Active(maxComponents, 0)
+            : m_Components(maxComponents), m_EntityToComponent(maxEntities), m_Active(maxComponents)
         {
-            activeCount = 0;
-            m_EntityIndices.resize(maxEntities);
-            for (auto& vec : m_EntityIndices)
-                vec.reserve(8);
+            memset(m_EntityToComponent.data(), -1, maxEntities * sizeof(int64_t));
+            m_ActiveCount = 0;
         }
 
         std::vector<ComponentType*> GetAllActiveComponents()
         {
             std::vector<ComponentType*> activeComponents;
-            activeComponents.reserve(activeCount);
+            activeComponents.reserve(m_ActiveCount);
 
             for (size_t i = 0; i < m_Components.size(); ++i)
             {
@@ -56,70 +56,46 @@ namespace DogoECS
             return activeComponents;
         }
 
-        std::vector<ComponentType*> GetComponents(uint64_t entityID)
-        {
-            std::vector<ComponentType*> result;
-            if (entityID >= m_EntityIndices.size()) return result;
-
-            result.reserve(m_EntityIndices[entityID].size());
-
-            for (size_t idx : m_EntityIndices[entityID])
-            {
-                if (m_Active[idx])
-                    result.push_back(&m_Components[idx]);
-            }
-            return result;
-        }
 
         template<typename... Args>
         ComponentType* AddComponent(uint32_t entityID, Args&&... args)
         {
-            if (activeCount >= m_Components.size())
-                throw std::runtime_error("No available component slots.");
-
-            m_Components[activeCount].~ComponentType();
-            ComponentType& comp = *new (&m_Components[activeCount]) ComponentType(std::forward<Args>(args)...);
-
+            if (m_ActiveCount >= m_Components.size())
+            {
+                std::cout << "No available component slots. Skipping." << std::endl;
+                return nullptr;
+            }
+            int existing = m_EntityToComponent[entityID];
+            if (existing != -1)
+                return &m_Components[existing];
+            size_t idx = m_ActiveCount++;
+            ComponentType& comp = *new (&m_Components[idx]) ComponentType(std::forward<Args>(args)...);
             comp.SetEntityID(entityID);
-            comp.SetIndex(activeCount);
-            m_Active[activeCount] = 1;
-
-            m_EntityIndices[entityID].push_back(activeCount);
-            activeCount++;
+            comp.SetIndex(idx);
+            m_Active[idx] = 1;
+            m_EntityToComponent[entityID] = idx;
 
             return &comp;
         }
 
-        void RemoveComponents(size_t entityID)
+        bool RemoveComponent(uint64_t entityID)
         {
-            for (size_t idx : m_EntityIndices[entityID])
-                m_Active[idx] = 0;
-
-            m_EntityIndices[entityID].clear();
-        }
-
-        bool RemoveComponent(uint64_t entityID, size_t index)
-        {
-            m_Active[index] = 0;
-
-            auto& vec = m_EntityIndices[entityID];
-            vec.erase(std::remove(vec.begin(), vec.end(), index), vec.end());
-
+            if (entityID > m_EntityToComponent.size())
+                return false;
+            ComponentType* comp = &m_Components[m_EntityToComponent[entityID]];
+            m_Active[comp->GetIndex()] = 0;
+            m_ActiveCount--;
+            m_Components[m_EntityToComponent[entityID]].~ComponentType();
+            new (&m_Components[m_EntityToComponent[entityID]]) ComponentType{};
             return true;
         }
 
         ComponentType* GetComponent(uint64_t entityID)
         {
-            if (entityID >= m_EntityIndices.size())
+            size_t idx = m_EntityToComponent[entityID];
+            if (idx == -1 || !m_Active[idx])
                 return nullptr;
-
-            for (size_t idx : m_EntityIndices[entityID])
-            {
-                if (m_Active[idx])
-                    return &m_Components[idx];
-            }
-
-            return nullptr;
+            return &m_Components[idx];
         }
 
 
@@ -147,62 +123,85 @@ namespace DogoECS
 
             bool operator!=(const ActiveIterator& other) const { return index != other.index; }
 
+
         private:
             void advanceToNextActive() {
                 while (index < maxIndex && !active[index]) index++;
             }
         };
 
-        ActiveIterator begin() { return ActiveIterator(m_Components.data(), m_Active.data(), 0, m_Components.size()); }
-        ActiveIterator end() { return ActiveIterator(m_Components.data(), m_Active.data(), m_Components.size(), m_Components.size()); }
+        size_t Size() const { return m_Components.size(); }
+        bool IsActive(size_t idx) const { return m_Active[idx] != 0; }
+        ComponentType& GetComponentAt(size_t idx) { return m_Components[idx]; }
+        ActiveIterator Begin() { return ActiveIterator(m_Components.data(), m_Active.data(), 0, m_Components.size()); }
+        ActiveIterator End() { return ActiveIterator(m_Components.data(), m_Active.data(), m_Components.size(), m_Components.size()); }
 
     private:
+        std::vector<int64_t> m_EntityToComponent;
         std::vector<ComponentType> m_Components;
         std::vector<uint8_t> m_Active;
-        std::vector<std::vector<size_t>> m_EntityIndices;
-        size_t activeCount = 0;
-        std::vector<ComponentType> m_ActiveComponents;
+        size_t m_ActiveCount = 0;
     };
 
     class DG_ComponentManager {
+        struct RemoveEntry {
+            void(*func)(void*, uint64_t);
+            void* tracker;
+        };
     public:
-        DG_ComponentManager(uint64_t maxcomponents, uint64_t maxentities) : m_MaxComponents(maxcomponents), m_MaxEntities(maxentities) {}
-
+        DG_ComponentManager(uint64_t maxcomponents, uint64_t maxentities) : m_MaxComponents(maxcomponents), m_MaxEntities(maxentities), m_RemoveEntries(maxentities) 
+        {
+            for (auto& vec : m_RemoveEntries)
+                vec.reserve(8);
+        }
+        template<typename ComponentType>
+        static size_t TypeID() {
+            static size_t id = s_TypeCounter++;
+            return id;
+        }
         template<typename ComponentType>
         void RegisterComponent()
         {
             std::type_index typeIndex(typeid(ComponentType));
-            m_Trackers[typeIndex] = std::make_shared<ComponentTracker<ComponentType>>(m_MaxComponents, m_MaxEntities);
+            auto tracker = std::make_shared<ComponentTracker<ComponentType>>(m_MaxComponents, m_MaxEntities);
+            size_t id = TypeID<ComponentType>();
+            if (id >= m_Trackers.size())
+                m_Trackers.resize(id + 1);
+            m_Trackers[id] = tracker;
+
         }
 
-        template<typename ComponentType>
-        ComponentType* AddComponent(Entity* entity)
-        {
-            auto tracker = GetTracker<ComponentType>();
-            if (!tracker) return nullptr;
-            return tracker->AddComponent(entity->GetID());
-        }
         template<typename ComponentType>
         ComponentType* AddComponent(uint64_t entityID)
         {
             auto tracker = GetTracker<ComponentType>();
             if (!tracker) return nullptr;
+            RemoveEntry re;
+            re.func = [](void* tracker, uint64_t id) {
+                static_cast<ComponentTracker<ComponentType>*>(tracker)->RemoveComponent(id);
+                };
+            re.tracker = tracker.get();
+            m_RemoveEntries[entityID].push_back(re);
             return tracker->AddComponent(entityID);
         }
-
-        template<typename ComponentType, typename... Args>
-        ComponentType* AddComponent(Entity* entity, Args&&... args)
+        template<typename ComponentType>
+        ComponentType* AddComponent(Entity* entity)
         {
-            auto tracker = GetTracker<ComponentType>();
-            if (!tracker) return nullptr;
-            return tracker->AddComponent(entity->GetID(), std::forward<Args>(args)...);
+            return AddComponent<ComponentType>(entity->GetID());
         }
+
         template<typename ComponentType, typename... Args>
         ComponentType* AddComponent(uint64_t entityID, Args&&... args)
         {
             auto tracker = GetTracker<ComponentType>();
             if (!tracker) return nullptr;
-            return tracker->AddComponent(entity->GetID(), std::forward<Args>(args)...);
+            /*m_EntityToComponentTrackers[entityID].push_back(tracker);*/
+            return tracker->AddComponent(entityID, std::forward<Args>(args)...);
+        }
+        template<typename ComponentType, typename... Args>
+        ComponentType* AddComponent(Entity* entity, Args&&... args)
+        {
+            return AddComponent<ComponentType>(entity->GetID(), std::forward<Args>(args)...);
         }
 
         template<typename ComponentType>
@@ -210,7 +209,7 @@ namespace DogoECS
         {
             auto tracker = GetTracker<ComponentType>();
             if (!tracker) throw std::runtime_error("Component not registered");
-            return tracker->begin();
+            return tracker->Begin();
         }
 
         template<typename ComponentType>
@@ -218,53 +217,63 @@ namespace DogoECS
         {
             auto tracker = GetTracker<ComponentType>();
             if (!tracker) throw std::runtime_error("Component not registered");
-            return tracker->end();
+            return tracker->End();
         }
 
         template<typename ComponentType>
         auto ComponentsBegin(Entity* entity)
         {
             auto tracker = GetTracker<ComponentType>();
-            if (!tracker) return tracker->end();
-            return tracker->begin();
+            if (!tracker) return tracker->End();
+            return tracker->Begin();
         }
 
         template<typename ComponentType>
         auto ComponentsEnd(Entity* entity)
         {
             auto tracker = GetTracker<ComponentType>();
-            if (!tracker) return tracker->end();
-            return tracker->end();
+            if (!tracker) return tracker->End();
+            return tracker->End();
         }
 
         template<typename ComponentType>
         std::shared_ptr<ComponentTracker<ComponentType>> GetTracker()
         {
-            auto it = m_Trackers.find(typeid(ComponentType));
-            if (it != m_Trackers.end())
-                return std::static_pointer_cast<ComponentTracker<ComponentType>>(it->second);
-            return nullptr;
+            size_t id = TypeID<ComponentType>();
+            return std::static_pointer_cast<ComponentTracker<ComponentType>>(m_Trackers[id]);
         }
         template<typename ComponentType>
         bool RemoveComponent(ComponentType* component)
         {
             auto tracker = GetTracker<ComponentType>();
             if (!tracker) return false;
-            return tracker->RemoveComponent(component->GetEntityID(), component->GetIndex());
+            auto& v = m_RemoveEntries[component->GetEntityID()];
+            if (v == nullptr)
+                return false;
+            for (auto it = v.begin(); it != v.end();)
+            {
+                if (*it == tracker)
+                    it = v.erase(it);
+                else
+                    ++it;
+            }
+            return tracker->RemoveComponent(component->GetEntityID());
         }
-        template<typename ComponentType>
-        void RemoveComponents(Entity* entity)
+        bool RemoveComponents(uint64_t entityID)
         {
-            auto tracker = GetTracker<ComponentType>();
-            if (tracker)
-                tracker->RemoveComponents(entity->GetID());
+            if (entityID >= m_MaxEntities)
+                return false;
+            auto& funcs = m_RemoveEntries[entityID];
+            if (funcs.empty())
+                return false;
+            for (auto& f : funcs)
+                f.func(f.tracker, entityID);
+            funcs.clear();
+            return true;
         }
-        template<typename ComponentType>
-        ComponentType* GetComponent(Entity* entity)
+        bool RemoveComponents(Entity* entity)
         {
-            auto tracker = GetTracker<ComponentType>();
-            if (!tracker) return nullptr;
-            return tracker->GetComponent(entity->GetID());
+            return RemoveComponents(entity->GetID());
         }
         template<typename ComponentType>
         ComponentType* GetComponent(uint64_t entityID)
@@ -273,13 +282,71 @@ namespace DogoECS
             if (!tracker) return nullptr;
             return tracker->GetComponent(entityID);
         }
+        template<typename ComponentType>
+        ComponentType* GetComponent(Entity* entity)
+        {
+            return GetComponent<ComponentType>(entity->GetID());
+        }
+
+        template<typename... Components>
+        class MultiComponentIterator {
+        public:
+            MultiComponentIterator(size_t current, size_t max, ComponentTracker<Components>*... trackers)
+                : index(current), maxIndex(max), trackers(std::make_tuple(trackers...))
+            {
+                advanceToNextValid();
+            }
+
+            MultiComponentIterator& operator++() {
+                ++index;
+                advanceToNextValid();
+                return *this;
+            }
+
+            bool operator!=(const MultiComponentIterator& other) const {
+                return index != other.index;
+            }
+
+            auto operator*() {
+                return std::make_tuple(std::get<ComponentTracker<Components>*>(trackers)->GetComponent(index)...);
+            }
 
 
+        private:
+            size_t index;
+            size_t maxIndex;
+            std::tuple<ComponentTracker<Components>*...> trackers;
+
+            void advanceToNextValid() {
+                while (index < maxIndex) {
+                    if (allComponentsActive(index)) break;
+                    ++index;
+                }
+            }
+
+            bool allComponentsActive(size_t idx) {
+                return (std::get<ComponentTracker<Components>*>(trackers)->IsActive(idx) && ...);
+            }
+        };
+
+
+        template<typename... Components>
+        auto GetComponentGroup() {
+            size_t maxEntities = m_MaxEntities;
+            using Iterator = MultiComponentIterator<Components...>;
+
+            return std::make_pair(
+                Iterator(0, maxEntities, GetTracker<Components>().get()...),
+                Iterator(maxEntities, maxEntities, GetTracker<Components>().get()...)
+            );
+        }
+        static inline size_t s_TypeCounter = 0;
 
     private:
         uint64_t m_MaxComponents;
         uint64_t m_MaxEntities;
-        std::unordered_map<std::type_index, std::shared_ptr<void>> m_Trackers;
+        std::vector<std::shared_ptr<void>> m_Trackers;
+        std::vector<std::vector<RemoveEntry>> m_RemoveEntries;
     };
 
 }

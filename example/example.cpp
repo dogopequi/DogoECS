@@ -66,23 +66,10 @@ int main()
         it->vz = 0.3f;
         count++;
     }
-
     auto mid3 = std::chrono::high_resolution_clock::now();
-
-    // remove half the components individually
-    for (size_t i = 0; i < NUM_ENTITIES; i += 2) {
-        auto trackerPos = componentManager.GetTracker<Position>();
-        auto trackerVel = componentManager.GetTracker<Velocity>();
-        if (trackerPos) trackerPos->RemoveComponents(allEntities[i]->GetID());
-        if (trackerVel) trackerVel->RemoveComponents(allEntities[i]->GetID());
-    }
-
-    auto mid4 = std::chrono::high_resolution_clock::now();
-
-    //remove remaining components by entity
-    for (size_t i = 1; i < NUM_ENTITIES; i += 2) {
-        componentManager.RemoveComponents<Position>(allEntities[i]);
-        componentManager.RemoveComponents<Velocity>(allEntities[i]);
+    //remove components by entity
+    for (size_t i = 0; i < NUM_ENTITIES; i++) {
+        componentManager.RemoveComponents(allEntities[i]);
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -97,10 +84,8 @@ int main()
         << std::chrono::duration_cast<std::chrono::milliseconds>(mid2 - mid1).count() << "\n";
     std::cout << "  Access/modify components: "
         << std::chrono::duration_cast<std::chrono::milliseconds>(mid3 - mid2).count() << "\n";
-    std::cout << "  Remove single components: "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(mid4 - mid3).count() << "\n";
     std::cout << "  Remove remaining components: "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid4).count() << "\n";
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end - mid3).count() << "\n";
 
     return 0;
 }
